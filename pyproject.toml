@@ -8,7 +8,7 @@ authors = ["Kurbanov Bulat <kurbanovbul@gmail.com>"]
 python = "^3.9"
 fastapi = "^0.70.0"
 pydantic = {extras = ["dotenv"], version = "^1.8.2"}
-uvicorn = "^0.15.0"
+uvicorn = {extras = ["standart"], version = "^0.15.0"}
 ormar = "^0.10.22"
 alembic = "^1.7.4"
 asyncpg = "^0.24.0"

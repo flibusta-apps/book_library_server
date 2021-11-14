@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.ormar import paginate
-from fastapi_book_server.app.utils.pagination import CustomPage
+from app.utils.pagination import CustomPage
 
 from app.models import Author as AuthorDB, AuthorAnnotation as AuthorAnnotationDB, Book as BookDB
 from app.serializers.author import Author, CreateAuthor, UpdateAuthor, AuthorBook, TranslatedBook
