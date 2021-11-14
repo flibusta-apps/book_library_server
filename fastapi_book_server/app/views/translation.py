@@ -1,0 +1,43 @@
+from typing import Union
+
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi_pagination import Params
+from fastapi_pagination.ext.ormar import paginate
+from app.utils.pagination import CustomPage
+
+from app.models import Translation as TranslationDB
+from app.serializers.translation import Translation, CreateTranslation, CreateRemoteTranslation
+from app.services.translation import TranslationCreator
+
+
+translation_router = APIRouter(
+    prefix="/api/v1/translation",
+    tags=["translation"]
+)
+
+
+@translation_router.get("/", response_model=CustomPage[Translation], dependencies=[Depends(Params)])
+async def get_translations():
+    return await paginate(
+        TranslationDB.objects.prefetch_related(["book", "translator"])
+    )
+
+
+@translation_router.post("/", response_model=Translation)
+async def create_translation(data: Union[CreateTranslation, CreateRemoteTranslation]):
+    translation = await TranslationCreator.create(data)
+
+    return await TranslationDB.objects.prefetch_related(["book", "translator"]).get(id=translation.id)
+
+
+@translation_router.delete("/{id}", response_model=Translation)
+async def delete_translation(id: int):
+    translation = await TranslationDB.objects.prefetch_related(["book", "translator"]).get_or_none(id=id)
+
+    if translation is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    await translation.delete()
+
+    return translation
