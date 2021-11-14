@@ -5,11 +5,13 @@ from fastapi_pagination.ext.ormar import paginate
 
 from app.models import BookAnnotation as BookAnnotationDB
 from app.serializers.book_annotation import BookAnnotation, CreateBookAnnotation, UpdateBookAnnotation
+from app.depends import check_token
 
 
 book_annotation_router = APIRouter(
     prefix="/api/v1/book_annotations",
-    tags=["book_annotation"]
+    tags=["book_annotation"],
+    dependencies=[Depends(check_token)]
 )
 
 

@@ -5,11 +5,13 @@ from fastapi_pagination.ext.ormar import paginate
 
 from app.models import Source as SourceDB
 from app.serializers.source import Source, CreateSource
+from app.depends import check_token
 
 
 source_router = APIRouter(
     prefix="/api/v1/sources",
     tags=["source"],
+    dependencies=[Depends(check_token)],
 )
 
 

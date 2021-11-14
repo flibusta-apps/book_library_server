@@ -5,11 +5,13 @@ from fastapi_pagination.ext.ormar import paginate
 
 from app.models import AuthorAnnotation as AuthorAnnotationDB
 from app.serializers.author_annotation import AuthorAnnotation, CreateAuthorAnnotation, UpdateAuthorAnnotation
+from app.depends import check_token
 
 
 author_annotation_router = APIRouter(
     prefix="/api/v1/author_annotations",
-    tags=["author_annotation"]
+    tags=["author_annotation"],
+    dependencies=[Depends(check_token)],
 )
 
 

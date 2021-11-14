@@ -9,11 +9,13 @@ from app.utils.pagination import CustomPage
 from app.models import Translation as TranslationDB
 from app.serializers.translation import Translation, CreateTranslation, CreateRemoteTranslation
 from app.services.translation import TranslationCreator
+from app.depends import check_token
 
 
 translation_router = APIRouter(
     prefix="/api/v1/translation",
-    tags=["translation"]
+    tags=["translation"],
+    dependencies=[Depends(check_token)],
 )
 
 

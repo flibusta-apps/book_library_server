@@ -9,11 +9,13 @@ from app.utils.pagination import CustomPage
 from app.models import Book as BookDB, Author as AuthorDB, AuthorAnnotation as AuthorAnnotationDB
 from app.serializers.book import Book, CreateBook, UpdateBook, CreateRemoteBook
 from app.services.book import BookTGRMSearchService, BookCreator
+from app.depends import check_token
 
 
 book_router = APIRouter(
     prefix="/api/v1/books",
     tags=["book"],
+    dependencies=[Depends(check_token)],
 )
 
 

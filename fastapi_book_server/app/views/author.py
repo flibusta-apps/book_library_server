@@ -8,11 +8,13 @@ from app.models import Author as AuthorDB, AuthorAnnotation as AuthorAnnotationD
 from app.serializers.author import Author, CreateAuthor, UpdateAuthor, AuthorBook, TranslatedBook
 from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorTGRMSearchService
+from app.depends import check_token
 
 
 author_router = APIRouter(
     prefix="/api/v1/authors",
     tags=["author"],
+    dependencies=[Depends(check_token)],
 )
 
 
@@ -23,7 +25,7 @@ async def get_authors():
     )
 
 
-@author_router.post("/", response_model=Author)
+@author_router.post("/", response_model=Author, dependencies=[Depends(Params)])
 async def create_author(data: CreateAuthor):
     author = await AuthorDB.objects.create(
         **data.dict()

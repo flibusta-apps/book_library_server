@@ -7,11 +7,13 @@ from app.utils.pagination import CustomPage
 from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Sequence, CreateSequence
 from app.services.sequence import SequenceTGRMSearchService
+from app.depends import check_token
 
 
 sequence_router = APIRouter(
     prefix="/api/v1/sequences",
-    tags=["sequence"]
+    tags=["sequence"],
+    dependencies=[Depends(check_token)],
 )
 
 

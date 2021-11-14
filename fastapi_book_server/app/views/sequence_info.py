@@ -9,11 +9,13 @@ from app.utils.pagination import CustomPage
 from app.models import SequenceInfo as SequenceInfoDB
 from app.serializers.sequence_info import SequenceInfo, CreateSequenceInfo, CreateRemoteSequenceInfo
 from app.services.sequence_info import SequenceInfoCreator
+from app.depends import check_token
 
 
 sequence_info_router = APIRouter(
     prefix="/api/v1/sequence_info",
-    tags=["sequence_info"]
+    tags=["sequence_info"],
+    dependencies=[Depends(check_token)],
 )
 
 
