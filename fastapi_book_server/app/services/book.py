@@ -9,7 +9,7 @@ from app.serializers.book import CreateBook, CreateRemoteBook
 
 
 class BookTGRMSearchService(TRGMSearchService):
-    MODEL = BookDB
+    MODEL_CLASS = BookDB
     FIELDS = [
         BookDB.Meta.table.c.title
     ]

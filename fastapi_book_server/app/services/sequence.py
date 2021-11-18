@@ -4,7 +4,7 @@ from app.services.common import TRGMSearchService
 
 
 class SequenceTGRMSearchService(TRGMSearchService):
-    MODEL = Sequence
+    MODEL_CLASS = Sequence
     FIELDS = [
         Sequence.Meta.table.c.name
     ]

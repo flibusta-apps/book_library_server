@@ -1,9 +1,9 @@
-from typing import Optional, Generic, TypeVar, Union, Any, cast
+from typing import Optional, Generic, TypeVar, Union, cast
 from itertools import permutations
 
 from fastapi_pagination.api import resolve_params
-from fastapi_pagination.bases import RawParams
-from app.utils.pagination import CustomPage
+from fastapi_pagination.bases import AbstractParams, RawParams
+from app.utils.pagination import Page, CustomPage
 
 from ormar import Model, QuerySet
 from sqlalchemy import text, func, select, desc, Table, Column
@@ -29,7 +29,11 @@ class TRGMSearchService(Generic[T]):
     PREFETCH_RELATED: Optional[Union[list[str], str]] = None
 
     @classmethod
-    def get_params(cls) -> RawParams:
+    def get_params(cls) -> AbstractParams:
+        return resolve_params()
+
+    @classmethod
+    def get_raw_params(cls) -> RawParams:
         return resolve_params().to_raw_params()
 
     @classmethod
@@ -52,7 +56,7 @@ class TRGMSearchService(Generic[T]):
     @property
     def fields_combinations(cls):
         assert cls.FIELDS is not None, f"FIELDS in {cls.__name__} don't set!"
-        assert len(cls.FIELDS) == 0, f"FIELDS in {cls.__name__} must be not empty!"
+        assert len(cls.FIELDS) != 0, f"FIELDS in {cls.__name__} must be not empty!"
 
         if len(cls.FIELDS) == 1:
             return cls.FIELDS
@@ -73,7 +77,7 @@ class TRGMSearchService(Generic[T]):
     @classmethod
     def get_object_ids_query(cls, query: str):
         similarity = cls.get_similarity_subquery(query)
-        params = cls.get_params()
+        params = cls.get_raw_params()
 
         return select(
             [cls.table.c.id],
@@ -120,15 +124,14 @@ class TRGMSearchService(Generic[T]):
         return await queryset.filter(id__in=[r.get("id") for r in ids]).all()
 
     @classmethod
-    async def get(cls, query: str) -> CustomPage[T]:
+    async def get(cls, query: str) -> Page[T]:
         params = cls.get_params()
 
         authors = await cls.get_objects(query)
         total = await cls.get_objects_count(query)
 
-        return CustomPage(
+        return CustomPage.create(
             items=authors,
             total=total,
-            limit=params.limit,
-            offset=params.offset
+            params=params
         )

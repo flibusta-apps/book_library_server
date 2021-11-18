@@ -4,7 +4,7 @@ from app.services.common import TRGMSearchService
 
 
 class AuthorTGRMSearchService(TRGMSearchService):
-    MODEL = Author
+    MODEL_CLASS = Author
     FIELDS = [
         Author.Meta.table.c.last_name,
         Author.Meta.table.c.first_name,
