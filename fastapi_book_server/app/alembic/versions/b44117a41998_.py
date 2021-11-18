@@ -1,16 +1,17 @@
 """empty message
 
-Revision ID: d172032adeaf
+Revision ID: b44117a41998
 Revises: 
-Create Date: 2021-11-05 17:22:11.717389
+Create Date: 2021-11-18 18:25:06.921287
 
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.sql.schema import UniqueConstraint
 
 
 # revision identifiers, used by Alembic.
-revision = 'd172032adeaf'
+revision = 'b44117a41998'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -40,12 +41,24 @@ def upgrade():
     sa.Column('source', sa.SmallInteger(), nullable=False),
     sa.Column('remote_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=256), nullable=False),
-    sa.Column('lang', sa.String(length=2), nullable=False),
+    sa.Column('lang', sa.String(length=3), nullable=False),
     sa.Column('file_type', sa.String(length=4), nullable=False),
     sa.Column('uploaded', sa.Date(), nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
     sa.ForeignKeyConstraint(['source'], ['sources.id'], name='fk_books_sources_id_source'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('source', 'remote_id', name='uc_books_source_remote_id')
+    )
+    op.create_table('genres',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('source', sa.SmallInteger(), nullable=False),
+    sa.Column('remote_id', sa.Integer(), nullable=False),
+    sa.Column('code', sa.String(length=45), nullable=False),
+    sa.Column('description', sa.String(length=99), nullable=False),
+    sa.Column('meta', sa.String(length=45), nullable=False),
+    sa.ForeignKeyConstraint(['source'], ['sources.id'], name='fk_genres_sources_id_source'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('source', 'remote_id', name='uc_genres_source_remote_id')
     )
     op.create_table('sequences',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -76,25 +89,43 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('book')
     )
-    op.create_table('sequence_infos',
+    op.create_table('book_authors',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('book', sa.Integer(), nullable=False),
-    sa.Column('sequence', sa.Integer(), nullable=False),
-    sa.Column('position', sa.SmallInteger(), nullable=False),
-    sa.ForeignKeyConstraint(['book'], ['books.id'], name='fk_sequence_infos_books_id_book'),
-    sa.ForeignKeyConstraint(['sequence'], ['sequences.id'], name='fk_sequence_infos_sequences_id_sequence'),
+    sa.Column('author', sa.Integer(), nullable=True),
+    sa.Column('book', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['author'], ['authors.id'], name='fk_book_authors_authors_author_id', onupdate='CASCADE', ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['book'], ['books.id'], name='fk_book_authors_books_book_id', onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('book', 'sequence', name='uc_sequence_infos_book_sequence')
+    sa.UniqueConstraint('book', 'author', name='uc_book_authors_book_author'),
+    )
+    op.create_table('book_genres',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('genre', sa.Integer(), nullable=True),
+    sa.Column('book', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['book'], ['books.id'], name='fk_book_genres_books_book_id', onupdate='CASCADE', ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['genre'], ['genres.id'], name='fk_book_genres_genres_genre_id', onupdate='CASCADE', ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('book', 'genre', name='uc_book_genres_book_genre'),
+    )
+    op.create_table('book_sequences',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('position', sa.SmallInteger(), nullable=False),
+    sa.Column('sequence', sa.Integer(), nullable=True),
+    sa.Column('book', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['book'], ['books.id'], name='fk_book_sequences_books_book_id', onupdate='CASCADE', ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['sequence'], ['sequences.id'], name='fk_book_sequences_sequences_sequence_id', onupdate='CASCADE', ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('book', 'sequence', name='uc_book_sequences_book_sequence'),
     )
     op.create_table('translations',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('book', sa.Integer(), nullable=False),
-    sa.Column('translator', sa.Integer(), nullable=False),
     sa.Column('position', sa.SmallInteger(), nullable=False),
-    sa.ForeignKeyConstraint(['book'], ['books.id'], name='fk_translations_books_id_book'),
-    sa.ForeignKeyConstraint(['translator'], ['authors.id'], name='fk_translations_authors_id_translator'),
+    sa.Column('author', sa.Integer(), nullable=True),
+    sa.Column('book', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['author'], ['authors.id'], name='fk_translations_authors_author_id', onupdate='CASCADE', ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['book'], ['books.id'], name='fk_translations_books_book_id', onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('book', 'translator', name='uc_translations_book_translator')
+    sa.UniqueConstraint('book', 'author', name='uc_translations_book_author'),
     )
     # ### end Alembic commands ###
 
@@ -102,10 +133,13 @@ def upgrade():
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('translations')
-    op.drop_table('sequence_infos')
+    op.drop_table('book_sequences')
+    op.drop_table('book_genres')
+    op.drop_table('book_authors')
     op.drop_table('book_annotations')
     op.drop_table('author_annotations')
     op.drop_table('sequences')
+    op.drop_table('genres')
     op.drop_table('books')
     op.drop_table('authors')
     op.drop_table('sources')

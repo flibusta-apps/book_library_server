@@ -1,6 +1,7 @@
 from datetime import date
 
 import ormar
+from sqlalchemy import text
 
 from core.db import metadata, database
 
@@ -19,6 +20,23 @@ class Source(ormar.Model):
     name: str = ormar.String(max_length=32, nullable=False, unique=True)  # type: ignore
 
 
+class Genre(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "genres"
+        constraints = [
+            ormar.UniqueColumns("source", "remote_id"),
+        ]
+
+    id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
+
+    source: Source = ormar.ForeignKey(Source, nullable=False)
+    remote_id: int = ormar.Integer(minimum=0, nullable=False)  # type: ignore
+
+    code: str = ormar.String(max_length=45, nullable=False)  # type: ignore
+    description: str = ormar.String(max_length=99, nullable=False)  # type: ignore
+    meta: str = ormar.String(max_length=45, nullable=False)  # type: ignore
+
+
 class Author(ormar.Model):
     class Meta(BaseMeta):
         tablename = "authors"
@@ -33,7 +51,7 @@ class Author(ormar.Model):
 
     first_name: str = ormar.String(max_length=256, nullable=False)  # type: ignore
     last_name: str = ormar.String(max_length=256, nullable=False)  # type: ignore
-    middle_name: str = ormar.String(max_length=256, nullable=True, default="")  # type: ignore
+    middle_name: str = ormar.String(max_length=256, nullable=True)  # type: ignore
 
 
 class AuthorAnnotation(ormar.Model):
@@ -47,54 +65,6 @@ class AuthorAnnotation(ormar.Model):
     title: str = ormar.String(max_length=256, nullable=False, default="")  # type: ignore
     text: str = ormar.Text(nullable=False, default="")  # type: ignore
     file: str = ormar.String(max_length=256, nullable=True)  # type: ignore
-
-
-class Book(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "books"
-        constraints = [
-            ormar.UniqueColumns("source", "remote_id"),
-        ]
-
-    id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
-
-    source: Source = ormar.ForeignKey(Source, nullable=False)
-    remote_id: int = ormar.Integer(minimum=0, nullable=False)  # type: ignore
-
-    title: str = ormar.String(max_length=256, nullable=False)  # type: ignore
-    lang: str = ormar.String(max_length=2, nullable=False)  # type: ignore
-    file_type: str = ormar.String(max_length=4, nullable=False)  # type: ignore
-    uploaded: date = ormar.Date()  # type: ignore
-
-    authors = ormar.ManyToMany(Author)
-
-
-class BookAnnotation(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "book_annotations"
-
-    id = ormar.Integer(primary_key=True, nullable=False)
-
-    book: Book = ormar.ForeignKey(Book, nullable=False, unique=True)
-
-    title: str = ormar.String(max_length=256, nullable=False, default="")  # type: ignore
-    text: str = ormar.Text(nullable=False, default="")  # type: ignore
-    file: str = ormar.String(max_length=256, nullable=True)  # type: ignore
-
-
-class Translation(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "translations"
-        constraints = [
-            ormar.UniqueColumns("book", "translator"),
-            ormar.UniqueColumns("book", "position"),
-        ]
-
-    id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
-
-    book: Book = ormar.ForeignKey(Book, nullable=False)
-    translator: Author = ormar.ForeignKey(Author, nullable=False)
-    position: int = ormar.SmallInteger(nullable=False)  # type: ignore
 
 
 class Sequence(ormar.Model):
@@ -112,16 +82,73 @@ class Sequence(ormar.Model):
     name: str = ormar.String(max_length=256, nullable=False)  # type: ignore
 
 
-class SequenceInfo(ormar.Model):
+class BookAuthors(ormar.Model):
     class Meta(BaseMeta):
-        tablename = "sequence_infos"
+        tablename = "book_authors"
+    
+    id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
+
+
+class BookGenres(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "book_genres"
+
+    id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
+
+
+class BookSequences(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "book_sequences"
+
+    id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
+
+    position: int = ormar.SmallInteger(minimum=0, nullable=False)  # type: ignore
+
+
+class Translation(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "translations"
         constraints = [
-            ormar.UniqueColumns("book", "sequence"),
-            ormar.UniqueColumns("sequence", "position"),
+            # ormar.UniqueColumns("book", "translator"),
         ]
 
     id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
 
-    book: Book = ormar.ForeignKey(Book, nullable=False)
-    sequence: Sequence = ormar.ForeignKey(Sequence, nullable=False)
-    position: int = ormar.SmallInteger(minimum=0, nullable=False)  # type: ignore
+    position: int = ormar.SmallInteger(nullable=False)  # type: ignore
+
+
+class Book(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "books"
+        constraints = [
+            ormar.UniqueColumns("source", "remote_id"),
+        ]
+
+    id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
+
+    source: Source = ormar.ForeignKey(Source, nullable=False)
+    remote_id: int = ormar.Integer(minimum=0, nullable=False)  # type: ignore
+
+    title: str = ormar.String(max_length=256, nullable=False)  # type: ignore
+    lang: str = ormar.String(max_length=3, nullable=False)  # type: ignore
+    file_type: str = ormar.String(max_length=4, nullable=False)  # type: ignore
+    uploaded: date = ormar.Date()  # type: ignore
+    is_deleted: bool = ormar.Boolean(default=False, server_default=text("false"), nullable=False)
+
+    authors = ormar.ManyToMany(Author, through=BookAuthors)
+    translators = ormar.ManyToMany(Author, through=Translation, related_name="translated_books")
+    genres = ormar.ManyToMany(Genre, through=BookGenres)
+    sequences = ormar.ManyToMany(Sequence, through=BookSequences)
+
+
+class BookAnnotation(ormar.Model):
+    class Meta(BaseMeta):
+        tablename = "book_annotations"
+
+    id = ormar.Integer(primary_key=True, nullable=False)
+
+    book: Book = ormar.ForeignKey(Book, nullable=False, unique=True)
+
+    title: str = ormar.String(max_length=256, nullable=False, default="")  # type: ignore
+    text: str = ormar.Text(nullable=False, default="")  # type: ignore
+    file: str = ormar.String(max_length=256, nullable=True)  # type: ignore
