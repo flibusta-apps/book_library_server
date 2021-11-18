@@ -6,7 +6,7 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 from app.utils.pagination import CustomPage
 
-from app.models import SequenceInfo as SequenceInfoDB
+from app.models import Sequence as SequenceInfoDB
 from app.serializers.sequence_info import SequenceInfo, CreateSequenceInfo, CreateRemoteSequenceInfo
 from app.services.sequence_info import SequenceInfoCreator
 from app.depends import check_token

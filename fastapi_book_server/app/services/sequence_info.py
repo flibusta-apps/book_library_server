@@ -2,7 +2,7 @@ from typing import Union
 
 from fastapi import HTTPException, status
 
-from app.models import SequenceInfo as SequenceInfoDB, Source as SourceDB, Book as BookDB, Sequence as SequenceDB
+from app.models import Sequence as SequenceInfoDB, Source as SourceDB, Book as BookDB, Sequence as SequenceDB
 from app.serializers.sequence_info import CreateSequenceInfo, CreateRemoteSequenceInfo
 
 
