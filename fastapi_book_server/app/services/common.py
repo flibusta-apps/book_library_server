@@ -1,5 +1,6 @@
 from typing import Optional, Generic, TypeVar, Union, cast
 from itertools import permutations
+import asyncio
 
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
@@ -127,11 +128,16 @@ class TRGMSearchService(Generic[T]):
     async def get(cls, query: str) -> Page[T]:
         params = cls.get_params()
 
-        authors = await cls.get_objects(query)
-        total = await cls.get_objects_count(query)
+        objects_task = asyncio.create_task(cls.get_objects(query))
+        total_task = asyncio.create_task(cls.get_objects_count(query))
+
+        await asyncio.wait({objects_task, total_task})
+
+        objects = objects_task.result()
+        total = total_task.result()
 
         return CustomPage.create(
-            items=authors,
+            items=objects,
             total=total,
             params=params
         )
