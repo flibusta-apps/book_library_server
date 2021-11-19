@@ -79,7 +79,7 @@ class Sequence(ormar.Model):
     source: Source = ormar.ForeignKey(Source, nullable=False)
     remote_id: int = ormar.Integer(minimum=0, nullable=False)  # type: ignore
 
-    name: str = ormar.String(max_length=256, nullable=False)  # type: ignore
+    name: str = ormar.String(max_length=256, nullable=False, index=True)  # type: ignore
 
 
 class BookAuthors(ormar.Model):
@@ -129,7 +129,7 @@ class Book(ormar.Model):
     source: Source = ormar.ForeignKey(Source, nullable=False)
     remote_id: int = ormar.Integer(minimum=0, nullable=False)  # type: ignore
 
-    title: str = ormar.String(max_length=256, nullable=False)  # type: ignore
+    title: str = ormar.String(max_length=256, nullable=False, index=True)  # type: ignore
     lang: str = ormar.String(max_length=3, nullable=False)  # type: ignore
     file_type: str = ormar.String(max_length=4, nullable=False)  # type: ignore
     uploaded: date = ormar.Date()  # type: ignore

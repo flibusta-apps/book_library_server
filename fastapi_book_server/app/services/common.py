@@ -1,13 +1,14 @@
-from typing import Optional, Generic, TypeVar, Union, cast
+from typing import Optional, Generic, TypeVar, Union
 from itertools import permutations
-import asyncio
+import json
 
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
 from app.utils.pagination import Page, CustomPage
 
 from ormar import Model, QuerySet
-from sqlalchemy import text, func, select, desc, Table, Column
+from sqlalchemy import text, func, select, or_, Table, Column
+from sqlalchemy.orm import Session
 from databases import Database
 
 
@@ -59,60 +60,57 @@ class TRGMSearchService(Generic[T]):
         assert cls.FIELDS is not None, f"FIELDS in {cls.__name__} don't set!"
         assert len(cls.FIELDS) != 0, f"FIELDS in {cls.__name__} must be not empty!"
 
-        if len(cls.FIELDS) == 1:
-            return cls.FIELDS
-
-        combinations = []
-
-        for i in range(1, len(cls.FIELDS)):
-            combinations += permutations(cls.FIELDS, i)
-
-        return combinations
+        return permutations(cls.FIELDS, len(cls.FIELDS))
 
     @classmethod
     def get_similarity_subquery(cls, query: str):
+        combs = cls.fields_combinations
+
         return func.greatest(
-            *[func.similarity(join_fields(comb), f"{query}::text") for comb in cls.fields_combinations]
+            *[func.similarity(join_fields(comb), f"{query}::text") for comb in combs]
         ).label("sml")
 
     @classmethod
-    def get_object_ids_query(cls, query: str):
-        similarity = cls.get_similarity_subquery(query)
-        params = cls.get_raw_params()
-
-        return select(
-            [cls.table.c.id],
-        ).where(
-            similarity > 0.5
-        ).order_by(
-            desc(similarity)
-        ).limit(params.limit).offset(params.offset)
-
-    @classmethod
-    def get_objects_count_query(cls, query: str):
-        similarity = cls.get_similarity_subquery(query)
-
-        return select(
-            func.count(cls.table.c.id)
-        ).where(
-            similarity > 0.5
+    def get_similarity_filter_subquery(cls, query: str):
+        return or_(
+            *[join_fields(comb) % f"{query}::text" for comb in cls.fields_combinations]
         )
 
     @classmethod
-    async def get_objects_count(cls, query: str) -> int:
-        count_query = cls.get_objects_count_query(query)
+    async def get_objects(cls, query_data: str) -> tuple[int, list[T]]:
+        similarity = cls.get_similarity_subquery(query_data)
+        similarity_filter = cls.get_similarity_filter_subquery(query_data)
 
-        count_row = await cls.database.fetch_one(count_query)
+        params = cls.get_raw_params()
+        
+        session = Session(cls.database.connection())
 
-        assert count_row is not None
+        q1 = session.query(
+            cls.table.c.id, similarity
+        ).order_by(
+            text('sml DESC')
+        ).filter(
+            cls.table.c.is_deleted == False,
+            similarity_filter
+        ).cte('objs')
 
-        return cast(int, count_row.get("count_1"))
+        sq = session.query(q1.c.id).limit(params.limit).offset(params.offset).subquery()
 
-    @classmethod
-    async def get_objects(cls, query: str) -> list[T]:
-        ids_query = cls.get_object_ids_query(query)
+        q2 = session.query(
+            func.json_build_object(
+                text("'total'"), func.count(q1.c.id),
+                text("'items'"), select(func.array_to_json(func.array_agg(sq.c.id)))
+            )
+        ).cte()
 
-        ids = await cls.database.fetch_all(ids_query)
+        print(str(q2))
+
+        row = await cls.database.fetch_one(q2)
+
+        if row is None:
+            raise ValueError('Something is wrong!')
+
+        result = json.loads(row['json_build_object_1'])
 
         queryset: QuerySet[T] = cls.model.objects
 
@@ -122,19 +120,14 @@ class TRGMSearchService(Generic[T]):
         if cls.SELECT_RELATED:
             queryset = queryset.select_related(cls.SELECT_RELATED)
 
-        return await queryset.filter(id__in=[r.get("id") for r in ids]).all()
+        return result['total'], await queryset.filter(id__in=result['items']).all()
+        
 
     @classmethod
     async def get(cls, query: str) -> Page[T]:
         params = cls.get_params()
 
-        objects_task = asyncio.create_task(cls.get_objects(query))
-        total_task = asyncio.create_task(cls.get_objects_count(query))
-
-        await asyncio.wait({objects_task, total_task})
-
-        objects = objects_task.result()
-        total = total_task.result()
+        total, objects = await cls.get_objects(query)
 
         return CustomPage.create(
             items=objects,
