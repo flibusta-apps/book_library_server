@@ -43,6 +43,19 @@ async def get_book(id: int):
     return book
 
 
+@book_router.get("/{source_id}/{remote_id}", response_model=Book)
+async def get_remote_book(source_id: int, remote_id: int):
+    book = await BookDB.objects.select_related("authors").get_or_none(
+        source=source_id,
+        remote_id=remote_id
+    )
+
+    if book is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+    return book
+
+
 @book_router.put("/{id}", response_model=Book)
 async def update_book(id: int, data: UpdateBook):
     book = await BookDB.objects.select_related("authors").get_or_none(id=id)
