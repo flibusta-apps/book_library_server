@@ -14,6 +14,9 @@ class BookTGRMSearchService(TRGMSearchService):
         BookDB.Meta.table.c.title
     ]
     PREFETCH_RELATED = ["source"]
+    FILTERS = [
+        BookDB.Meta.table.c.is_deleted == False,
+    ]
 
 
 class BookCreator:

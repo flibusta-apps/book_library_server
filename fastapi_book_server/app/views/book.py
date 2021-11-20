@@ -43,7 +43,7 @@ async def get_book(id: int):
     return book
 
 
-@book_router.get("/{source_id}/{remote_id}", response_model=Book)
+@book_router.get("/remote/{source_id}/{remote_id}", response_model=Book)
 async def get_remote_book(source_id: int, remote_id: int):
     book = await BookDB.objects.select_related("authors").get_or_none(
         source=source_id,

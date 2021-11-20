@@ -7,7 +7,7 @@ from fastapi_pagination.bases import AbstractParams, RawParams
 from app.utils.pagination import Page, CustomPage
 
 from ormar import Model, QuerySet
-from sqlalchemy import text, func, select, or_, Table, Column
+from sqlalchemy import text, func, select, or_, Table, Column, cast, Text
 from sqlalchemy.orm import Session
 from databases import Database
 
@@ -29,6 +29,7 @@ class TRGMSearchService(Generic[T]):
     FIELDS: Optional[list[Column]] = None
     SELECT_RELATED: Optional[Union[list[str], str]] = None
     PREFETCH_RELATED: Optional[Union[list[str], str]] = None
+    FILTERS = []
 
     @classmethod
     def get_params(cls) -> AbstractParams:
@@ -67,7 +68,7 @@ class TRGMSearchService(Generic[T]):
         combs = cls.fields_combinations
 
         return func.greatest(
-            *[func.similarity(join_fields(comb), f"{query}::text") for comb in combs]
+            *[func.similarity(join_fields(comb), cast(query, Text)) for comb in combs]
         ).label("sml")
 
     @classmethod
@@ -90,8 +91,8 @@ class TRGMSearchService(Generic[T]):
         ).order_by(
             text('sml DESC')
         ).filter(
-            cls.table.c.is_deleted == False,
-            similarity_filter
+            similarity_filter,
+            *cls.FILTERS
         ).cte('objs')
 
         sq = session.query(q1.c.id).limit(params.limit).offset(params.offset).subquery()
