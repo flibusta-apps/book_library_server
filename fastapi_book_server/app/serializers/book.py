@@ -6,6 +6,11 @@ from app.serializers.author import Author
 from app.serializers.orjson_config import ORJSONConfig
 
 
+class BookSource(BaseModel):
+    id: int
+    name: str
+
+
 class Book(BaseModel):
     id: int
     title: str
@@ -17,6 +22,10 @@ class Book(BaseModel):
 
     class Config(ORJSONConfig):
         pass
+
+
+class BookWithSource(Book):
+    source: BookSource
 
 
 class CreateBook(BaseModel):
