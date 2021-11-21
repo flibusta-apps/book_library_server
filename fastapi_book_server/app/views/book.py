@@ -1,6 +1,6 @@
 from typing import Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
@@ -92,5 +92,5 @@ async def get_book_annotation(id: int):
 
 
 @book_router.get("/search/{query}", response_model=CustomPage[Book], dependencies=[Depends(Params)])
-async def search_books(query: str):
-    return await BookTGRMSearchService.get(query)
+async def search_books(query: str, request: Request):
+    return await BookTGRMSearchService.get(query, request.app.state.redis)

@@ -1,8 +1,10 @@
-from operator import add
 from fastapi import FastAPI
 from fastapi_pagination import add_pagination
+import aioredis
 
 from core.db import database
+from core.config import env_config
+
 from app.views import routers
 
 
@@ -10,6 +12,13 @@ def start_app() -> FastAPI:
     app = FastAPI()
 
     app.state.database = database
+
+    app.state.redis = aioredis.Redis(
+        host=env_config.REDIS_HOST,
+        port=env_config.REDIS_PORT,
+        db=env_config.REDIS_DB,
+        password=env_config.REDIS_PASSWORD,
+    )
 
     for router in routers:
         app.include_router(router)

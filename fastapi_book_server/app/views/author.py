@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
@@ -81,5 +81,5 @@ async def get_translated_books(id: int):
 
 
 @author_router.get("/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)])
-async def search_authors(query: str):
-    return await AuthorTGRMSearchService.get(query)
+async def search_authors(query: str, request: Request):
+    return await AuthorTGRMSearchService.get(query, request.app.state.redis)

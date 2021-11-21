@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
@@ -37,5 +37,5 @@ async def create_sequence(data: CreateSequence):
 
 
 @sequence_router.get("/search/{query}", response_model=CustomPage[Sequence], dependencies=[Depends(Params)])
-async def search_sequences(query: str):
-    return await SequenceTGRMSearchService.get(query)
+async def search_sequences(query: str, request: Request):
+    return await SequenceTGRMSearchService.get(query, request.app.state.redis)
