@@ -29,6 +29,10 @@ class RemoteBook(Book):
     remote_id: int
 
 
+class BookDetail(RemoteBook):
+    is_deleted: bool
+
+
 class CreateBook(BaseModel):
     source: int
     remote_id: int

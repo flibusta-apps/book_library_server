@@ -7,7 +7,7 @@ from fastapi_pagination.ext.ormar import paginate
 from app.utils.pagination import CustomPage
 
 from app.models import Book as BookDB, Author as AuthorDB, AuthorAnnotation as AuthorAnnotationDB
-from app.serializers.book import Book, RemoteBook, CreateBook, UpdateBook, CreateRemoteBook
+from app.serializers.book import Book, RemoteBook, BookDetail, CreateBook, UpdateBook, CreateRemoteBook
 from app.services.book import BookTGRMSearchService, BookCreator
 from app.filters.book import get_book_filter
 from app.depends import check_token
@@ -34,7 +34,7 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
     return await BookDB.objects.select_related(["source",  "authors"]).get(id=book.id)
 
 
-@book_router.get("/{id}", response_model=Book)
+@book_router.get("/{id}", response_model=BookDetail)
 async def get_book(id: int):
     book = await BookDB.objects.select_related(["source",  "authors"]).get_or_none(id=id)
     
