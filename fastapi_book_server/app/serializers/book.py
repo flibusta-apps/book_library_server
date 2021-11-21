@@ -10,6 +10,7 @@ class Book(BaseModel):
     title: str
     lang: str
     file_type: str
+    available_types: list[str]
     uploaded: date
     authors: list[Author]
 

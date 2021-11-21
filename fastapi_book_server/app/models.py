@@ -140,6 +140,13 @@ class Book(ormar.Model):
     genres = ormar.ManyToMany(Genre, through=BookGenres)
     sequences = ormar.ManyToMany(Sequence, through=BookSequences)
 
+    @ormar.property_field
+    def available_types(self) -> list[str]:
+        if self.file_type == 'fb2' and self.source.name == 'flibusta':
+            return ['fb2', 'epub', 'mobi']
+
+        return [self.file_type]
+
 
 class BookAnnotation(ormar.Model):
     class Meta(BaseMeta):
