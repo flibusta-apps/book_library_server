@@ -24,8 +24,9 @@ class Book(BaseModel):
         pass
 
 
-class BookWithSource(Book):
+class RemoteBook(Book):
     source: BookSource
+    remote_id: int
 
 
 class CreateBook(BaseModel):
