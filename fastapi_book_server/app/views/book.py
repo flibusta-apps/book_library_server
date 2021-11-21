@@ -9,6 +9,7 @@ from app.utils.pagination import CustomPage
 from app.models import Book as BookDB, Author as AuthorDB, AuthorAnnotation as AuthorAnnotationDB
 from app.serializers.book import Book, RemoteBook, CreateBook, UpdateBook, CreateRemoteBook
 from app.services.book import BookTGRMSearchService, BookCreator
+from app.filters.book import get_book_filter
 from app.depends import check_token
 
 
@@ -20,9 +21,9 @@ book_router = APIRouter(
 
 
 @book_router.get("/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)])
-async def get_books():
+async def get_books(book_filter: dict = Depends(get_book_filter)):
     return await paginate(
-        BookDB.objects.select_related(["source",  "authors"])
+        BookDB.objects.select_related(["source",  "authors"]).filter(**book_filter)
     )
 
 
