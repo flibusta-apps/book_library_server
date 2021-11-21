@@ -3,6 +3,7 @@ from datetime import date
 from pydantic import BaseModel
 
 from app.serializers.author import Author
+from app.serializers.orjson_config import ORJSONConfig
 
 
 class Book(BaseModel):
@@ -14,6 +15,9 @@ class Book(BaseModel):
     uploaded: date
     authors: list[Author]
 
+    class Config(ORJSONConfig):
+        pass
+
 
 class CreateBook(BaseModel):
     source: int
@@ -24,6 +28,9 @@ class CreateBook(BaseModel):
     uploaded: date
     authors: list[int]
 
+    class Config(ORJSONConfig):
+        pass
+
 
 class UpdateBook(BaseModel):
     title: str
@@ -31,6 +38,9 @@ class UpdateBook(BaseModel):
     file_type: str
     uploaded: date
     authors: list[int]
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class CreateRemoteBook(BaseModel):
@@ -41,3 +51,6 @@ class CreateRemoteBook(BaseModel):
     file_type: str
     uploaded: date
     remote_authors: list[int]
+
+    class Config(ORJSONConfig):
+        pass

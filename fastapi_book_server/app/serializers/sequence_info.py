@@ -1,11 +1,16 @@
 from pydantic import BaseModel
 
+from app.serializers.orjson_config import ORJSONConfig
+
 
 class SequenceBookAuthor(BaseModel):
     id: int
     first_name: str
     last_name: str
     middle_name: str
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class SeqTranslationTranslator(BaseModel):
@@ -14,10 +19,16 @@ class SeqTranslationTranslator(BaseModel):
     last_name: str
     middle_name: str
 
+    class Config(ORJSONConfig):
+        pass
+
 
 class SequenceBookTranslation(BaseModel):
     id: int
     translator: SeqTranslationTranslator
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class SequenceBook(BaseModel):
@@ -28,10 +39,16 @@ class SequenceBook(BaseModel):
     authors: SequenceBookAuthor
     translation: SequenceBookTranslation
 
+    class Config(ORJSONConfig):
+        pass
+
 
 class Sequence(BaseModel):
     id: int
     name: str
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class SequenceInfo(BaseModel):
@@ -40,11 +57,17 @@ class SequenceInfo(BaseModel):
     sequence: Sequence
     position: int
 
+    class Config(ORJSONConfig):
+        pass
+
 
 class CreateSequenceInfo(BaseModel):
     book: int
     sequence: int
     position: int
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class CreateRemoteSequenceInfo(BaseModel):
@@ -52,3 +75,6 @@ class CreateRemoteSequenceInfo(BaseModel):
     remote_book: int
     remote_sequence: int
     position: int
+
+    class Config(ORJSONConfig):
+        pass

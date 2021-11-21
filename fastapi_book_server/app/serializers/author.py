@@ -1,7 +1,8 @@
 from typing import Optional
-from datetime import date
 
 from pydantic import BaseModel
+
+from app.serializers.orjson_config import ORJSONConfig
 
 
 class Author(BaseModel):
@@ -10,6 +11,9 @@ class Author(BaseModel):
     first_name: str
     last_name: str
     middle_name: Optional[str]
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class CreateAuthor(BaseModel):
@@ -20,11 +24,17 @@ class CreateAuthor(BaseModel):
     last_name: str
     middle_name: Optional[str]
 
+    class Config(ORJSONConfig):
+        pass
+
 
 class UpdateAuthor(BaseModel):
     first_name: str
     last_name: str
     middle_name: Optional[str]
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class AuthorBook(BaseModel):
@@ -33,10 +43,16 @@ class AuthorBook(BaseModel):
     lang: str
     file_type: str
 
+    class Config(ORJSONConfig):
+        pass
+
 
 class Translation(BaseModel):
     translator: Author
     position: int
+
+    class Config(ORJSONConfig):
+        pass
 
 
 class TranslatedBook(BaseModel):
@@ -46,3 +62,6 @@ class TranslatedBook(BaseModel):
     file_type: str
     authors: list[Author]
     translations: list[Translation]
+
+    class Config(ORJSONConfig):
+        pass
