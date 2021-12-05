@@ -69,7 +69,7 @@ async def get_author_annotation(id: int):
 @author_router.get("/{id}/books", response_model=CustomPage[AuthorBook], dependencies=[Depends(Params)])
 async def get_author_books(id: int):
     return await paginate(
-        BookDB.objects.filter(author__id=id).order_by('title')
+        BookDB.objects.select_related(["source", "annotations"]).filter(authors__id=id).order_by('title')
     )
 
 

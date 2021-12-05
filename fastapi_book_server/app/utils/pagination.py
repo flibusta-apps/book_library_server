@@ -1,6 +1,6 @@
 from typing import Protocol, TypeVar, Any, Generic, Sequence, runtime_checkable
 
-from pydantic import PositiveInt
+from pydantic import conint
 
 from fastapi_pagination import Page, Params
 from fastapi_pagination.bases import AbstractParams
@@ -16,7 +16,7 @@ T = TypeVar('T', ToDict, Any)
 
 
 class CustomPage(Page[T], Generic[T]):
-    total_pages: PositiveInt  
+    total_pages: conint(ge=0)  # type: ignore
 
     @classmethod
     def create(

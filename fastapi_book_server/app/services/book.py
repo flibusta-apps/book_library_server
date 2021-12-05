@@ -8,15 +8,22 @@ from app.services.common import TRGMSearchService
 from app.serializers.book import CreateBook, CreateRemoteBook
 
 
+GET_OBJECTS_IDS_QUERY = """
+SELECT ARRAY(
+    WITH filtered_books AS ( 
+        SELECT id, similarity(title, :query) as sml FROM books
+        WHERE books.title % :query
+    )
+    SELECT fbooks.id FROM filtered_books as fbooks
+    ORDER BY fbooks.sml DESC, fbooks.id 
+);
+"""
+
+
 class BookTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = BookDB
-    FIELDS = [
-        BookDB.Meta.table.c.title
-    ]
     PREFETCH_RELATED = ["source", "authors", "annotations"]
-    FILTERS = [
-        BookDB.Meta.table.c.is_deleted == False,
-    ]
+    GET_OBJECT_IDS_QUERY = GET_OBJECTS_IDS_QUERY
 
 
 class BookCreator:

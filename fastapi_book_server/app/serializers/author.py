@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import date
 
 from pydantic import BaseModel
 
@@ -44,6 +45,9 @@ class AuthorBook(BaseModel):
     title: str
     lang: str
     file_type: str
+    available_types: list[str]
+    uploaded: date
+    annotation_exists: bool
 
     class Config(ORJSONConfig):
         pass

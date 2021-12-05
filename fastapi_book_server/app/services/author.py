@@ -3,11 +3,40 @@ from app.models import Author
 from app.services.common import TRGMSearchService
 
 
+GET_OBJECTS_IDS_QUERY = """
+SELECT ARRAY(
+    WITH filtered_authors AS ( 
+        SELECT 
+            id,
+            GREATEST(
+                similarity((last_name || ' ' || first_name || ' ' || middle_name), :query),
+                similarity((last_name || ' ' || first_name), :query),
+                similarity((last_name), :query)
+            ) as sml,
+            (
+                SELECT count(*) FROM book_authors
+                LEFT JOIN books ON books.id = book
+                WHERE author = authors.id AND books.is_deleted = 'f'
+            ) as books_count
+        FROM authors
+        WHERE (
+            (last_name || ' ' || first_name || ' ' || middle_name) % :query OR
+            (last_name || ' ' || first_name) % :query OR
+            (last_name) % :query
+        ) AND
+        EXISTS (
+            SELECT * FROM book_authors
+            LEFT JOIN books ON books.id = book
+            WHERE author = authors.id AND books.is_deleted = 'f'
+        )
+    )
+    SELECT fauthors.id FROM filtered_authors as fauthors
+    ORDER BY fauthors.sml DESC, fauthors.books_count DESC
+);
+"""
+
+
 class AuthorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
-    FIELDS = [
-        Author.Meta.table.c.last_name,
-        Author.Meta.table.c.first_name,
-        Author.Meta.table.c.middle_name
-    ]
     PREFETCH_RELATED = ["source", "annotations"]
+    GET_OBJECT_IDS_QUERY = GET_OBJECTS_IDS_QUERY

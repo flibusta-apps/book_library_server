@@ -6,8 +6,9 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 from app.utils.pagination import CustomPage
 
-from app.models import Book as BookDB, Author as AuthorDB, AuthorAnnotation as AuthorAnnotationDB
+from app.models import Book as BookDB, Author as AuthorDB, BookAnnotation as BookAnnotationDB
 from app.serializers.book import Book, RemoteBook, BookDetail, CreateBook, UpdateBook, CreateRemoteBook
+from app.serializers.book_annotation import BookAnnotation
 from app.services.book import BookTGRMSearchService, BookCreator
 from app.filters.book import get_book_filter
 from app.depends import check_token
@@ -82,9 +83,9 @@ async def update_book(id: int, data: UpdateBook):
     return book
 
 
-@book_router.get("/{id}/annotation")
+@book_router.get("/{id}/annotation", response_model=BookAnnotation)
 async def get_book_annotation(id: int):
-    annotation = await AuthorAnnotationDB.objects.get(book__id=id)
+    annotation = await BookAnnotationDB.objects.get(book__id=id)
 
     if annotation is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
