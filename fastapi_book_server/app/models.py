@@ -143,7 +143,7 @@ class Book(ormar.Model):
     @ormar.property_field
     def available_types(self) -> list[str]:
         if self.file_type == 'fb2' and self.source.name == 'flibusta':
-            return ['fb2', 'fb2+zip', 'epub', 'mobi']
+            return ['fb2', 'fb2zip', 'epub', 'mobi']
 
         return [self.file_type]
 
