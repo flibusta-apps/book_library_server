@@ -12,6 +12,8 @@ class Author(BaseModel):
     last_name: str
     middle_name: Optional[str]
 
+    annotation_exists: bool
+
     class Config(ORJSONConfig):
         pass
 

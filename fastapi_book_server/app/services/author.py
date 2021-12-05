@@ -10,4 +10,4 @@ class AuthorTGRMSearchService(TRGMSearchService):
         Author.Meta.table.c.first_name,
         Author.Meta.table.c.middle_name
     ]
-    PREFETCH_RELATED = ["source"]
+    PREFETCH_RELATED = ["source", "annotations"]

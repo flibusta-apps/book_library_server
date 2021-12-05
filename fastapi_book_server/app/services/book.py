@@ -13,7 +13,7 @@ class BookTGRMSearchService(TRGMSearchService):
     FIELDS = [
         BookDB.Meta.table.c.title
     ]
-    PREFETCH_RELATED = ["source", "authors"]
+    PREFETCH_RELATED = ["source", "authors", "annotations"]
     FILTERS = [
         BookDB.Meta.table.c.is_deleted == False,
     ]

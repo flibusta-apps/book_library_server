@@ -21,7 +21,7 @@ author_router = APIRouter(
 @author_router.get("/", response_model=CustomPage[Author], dependencies=[Depends(Params)])
 async def get_authors():
     return await paginate(
-        AuthorDB.objects.prefetch_related("source")
+        AuthorDB.objects.prefetch_related(["source", "annotations"])
     )
 
 
@@ -31,12 +31,12 @@ async def create_author(data: CreateAuthor):
         **data.dict()
     )
 
-    return await AuthorDB.objects.prefetch_related("source").get(id=author.id)
+    return await AuthorDB.objects.prefetch_related(["source", "annotations"]).get(id=author.id)
 
 
 @author_router.get("/{id}", response_model=Author)
 async def get_author(id: int):
-    author = await AuthorDB.objects.prefetch_related("source").get_or_none(id=id)
+    author = await AuthorDB.objects.prefetch_related(["source", "annotations"]).get_or_none(id=id)
 
     if author is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)

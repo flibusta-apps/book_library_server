@@ -53,6 +53,10 @@ class Author(ormar.Model):
     last_name: str = ormar.String(max_length=256, nullable=False)  # type: ignore
     middle_name: str = ormar.String(max_length=256, nullable=True)  # type: ignore
 
+    @ormar.property_field
+    def annotation_exists(self) -> bool:
+        return len(self.annotations) != 0
+
 
 class AuthorAnnotation(ormar.Model):
     class Meta(BaseMeta):
@@ -60,7 +64,7 @@ class AuthorAnnotation(ormar.Model):
 
     id = ormar.Integer(primary_key=True, nullable=False)
 
-    author: Author = ormar.ForeignKey(Author, nullable=False, unique=True)
+    author: Author = ormar.ForeignKey(Author, nullable=False, unique=True, related_name="annotations")
 
     title: str = ormar.String(max_length=256, nullable=False, default="")  # type: ignore
     text: str = ormar.Text(nullable=False, default="")  # type: ignore
@@ -147,6 +151,10 @@ class Book(ormar.Model):
 
         return [self.file_type]
 
+    @ormar.property_field
+    def annotation_exists(self) -> bool:
+        return len(self.annotations) != 0
+
 
 class BookAnnotation(ormar.Model):
     class Meta(BaseMeta):
@@ -154,7 +162,7 @@ class BookAnnotation(ormar.Model):
 
     id = ormar.Integer(primary_key=True, nullable=False)
 
-    book: Book = ormar.ForeignKey(Book, nullable=False, unique=True)
+    book: Book = ormar.ForeignKey(Book, nullable=False, unique=True, related_name="annotations")
 
     title: str = ormar.String(max_length=256, nullable=False, default="")  # type: ignore
     text: str = ormar.Text(nullable=False, default="")  # type: ignore

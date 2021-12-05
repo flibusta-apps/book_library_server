@@ -23,7 +23,7 @@ book_router = APIRouter(
 @book_router.get("/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)])
 async def get_books(book_filter: dict = Depends(get_book_filter)):
     return await paginate(
-        BookDB.objects.select_related(["source",  "authors"]).filter(**book_filter)
+        BookDB.objects.select_related(["source",  "authors", "annotations"]).filter(**book_filter)
     )
 
 
@@ -31,12 +31,12 @@ async def get_books(book_filter: dict = Depends(get_book_filter)):
 async def create_book(data: Union[CreateBook, CreateRemoteBook]):
     book = await BookCreator.create(data)
 
-    return await BookDB.objects.select_related(["source",  "authors"]).get(id=book.id)
+    return await BookDB.objects.select_related(["source",  "authors", "annotations"]).get(id=book.id)
 
 
 @book_router.get("/{id}", response_model=BookDetail)
 async def get_book(id: int):
-    book = await BookDB.objects.select_related(["source",  "authors"]).get_or_none(id=id)
+    book = await BookDB.objects.select_related(["source",  "authors", "annotations"]).get_or_none(id=id)
     
     if book is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
@@ -46,7 +46,7 @@ async def get_book(id: int):
 
 @book_router.get("/remote/{source_id}/{remote_id}", response_model=Book)
 async def get_remote_book(source_id: int, remote_id: int):
-    book = await BookDB.objects.select_related(["source",  "authors"]).get_or_none(
+    book = await BookDB.objects.select_related(["source",  "authors", "annotations"]).get_or_none(
         source=source_id,
         remote_id=remote_id
     )
@@ -59,7 +59,7 @@ async def get_remote_book(source_id: int, remote_id: int):
 
 @book_router.put("/{id}", response_model=Book)
 async def update_book(id: int, data: UpdateBook):
-    book = await BookDB.objects.select_related(["source",  "authors"]).get_or_none(id=id)
+    book = await BookDB.objects.select_related(["source",  "authors", "annotations"]).get_or_none(id=id)
 
     if book is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
