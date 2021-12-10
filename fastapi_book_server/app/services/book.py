@@ -8,14 +8,15 @@ from app.services.common import TRGMSearchService
 from app.serializers.book import CreateBook, CreateRemoteBook
 
 
-GET_OBJECTS_IDS_QUERY = """
+GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(
     WITH filtered_books AS ( 
         SELECT id, similarity(title, :query) as sml FROM books
         WHERE books.title % :query
     )
     SELECT fbooks.id FROM filtered_books as fbooks
-    ORDER BY fbooks.sml DESC, fbooks.id 
+    ORDER BY fbooks.sml DESC, fbooks.id
+    LIMIT 210
 );
 """
 
@@ -23,7 +24,7 @@ SELECT ARRAY(
 class BookTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = BookDB
     PREFETCH_RELATED = ["source", "authors", "annotations"]
-    GET_OBJECT_IDS_QUERY = GET_OBJECTS_IDS_QUERY
+    GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
 class BookCreator:

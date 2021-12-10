@@ -3,8 +3,8 @@ from app.models import Sequence
 from app.services.common import TRGMSearchService
 
 
-GET_OBJECTS_IDS_QUERY = """
-EXPLAIN ANALYZE SELECT ARRAY (
+GET_OBJECT_IDS_QUERY = """
+SELECT ARRAY (
     WITH filtered_sequences AS (
         SELECT 
             id,
@@ -24,6 +24,7 @@ EXPLAIN ANALYZE SELECT ARRAY (
     )
     SELECT fsequences.id FROM filtered_sequences as fsequences
     ORDER BY fsequences.sml DESC, fsequences.books_count DESC
+    LIMIT 210
 );
 """
 
@@ -31,4 +32,4 @@ EXPLAIN ANALYZE SELECT ARRAY (
 class SequenceTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Sequence
     PREFETCH_RELATED = ["source"]
-    GET_OBJECTS_IDS_QUERY = GET_OBJECTS_IDS_QUERY
+    GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY

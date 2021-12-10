@@ -3,7 +3,7 @@ from app.models import Author
 from app.services.common import TRGMSearchService
 
 
-GET_OBJECTS_IDS_QUERY = """
+GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(
     WITH filtered_authors AS ( 
         SELECT 
@@ -32,6 +32,7 @@ SELECT ARRAY(
     )
     SELECT fauthors.id FROM filtered_authors as fauthors
     ORDER BY fauthors.sml DESC, fauthors.books_count DESC
+    LIMIT 210
 );
 """
 
@@ -39,4 +40,4 @@ SELECT ARRAY(
 class AuthorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
     PREFETCH_RELATED = ["source", "annotations"]
-    GET_OBJECT_IDS_QUERY = GET_OBJECTS_IDS_QUERY
+    GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
