@@ -4,8 +4,8 @@ from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 from app.utils.pagination import CustomPage
 
-from app.models import Sequence as SequenceDB
-from app.serializers.sequence import Sequence, CreateSequence
+from app.models import Sequence as SequenceDB, Book as BookDB, BookSequences as BookSequencesDB
+from app.serializers.sequence import Sequence, CreateSequence, Book as SequenceBook
 from app.services.sequence import SequenceTGRMSearchService
 from app.depends import check_token
 
@@ -27,6 +27,14 @@ async def get_sequences():
 @sequence_router.get("/{id}", response_model=Sequence)
 async def get_sequence(id: int):
     return await SequenceDB.objects.get(id=id)
+
+
+@sequence_router.get("/{id}/books", response_model=CustomPage[SequenceBook], dependencies=[Depends(Params)])
+async def get_sequence_books(id: int):
+    return await paginate(
+        BookDB.objects.select_related(["source", "annotations", "authors"])
+        .filter(sequences__id=id).order_by("sequences__booksequences__position")
+    )
 
 
 @sequence_router.post("/", response_model=Sequence)

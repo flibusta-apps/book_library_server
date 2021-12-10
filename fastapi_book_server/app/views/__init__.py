@@ -9,7 +9,6 @@ from app.views.book_annotation import book_annotation_router
 from app.views.translation import translation_router
 
 from app.views.sequence import sequence_router
-from app.views.sequence_info import sequence_info_router
 
 
 routers = [
@@ -20,5 +19,4 @@ routers = [
     book_annotation_router,
     translation_router,
     sequence_router,
-    sequence_info_router,
 ]

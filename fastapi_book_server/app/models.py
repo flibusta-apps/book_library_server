@@ -112,9 +112,6 @@ class BookSequences(ormar.Model):
 class Translation(ormar.Model):
     class Meta(BaseMeta):
         tablename = "translations"
-        constraints = [
-            # ormar.UniqueColumns("book", "translator"),
-        ]
 
     id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
 
