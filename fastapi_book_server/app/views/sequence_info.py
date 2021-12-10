@@ -29,7 +29,7 @@ async def get_sequence_infos():
 
 @sequence_info_router.get("/{id}", response_model=SequenceInfo)
 async def get_sequence_info(id: int):
-    sequence_info = SequenceInfoDB.objects.prefetch_related(["book", "sequence"]) \
+    sequence_info = await SequenceInfoDB.objects.prefetch_related(["book", "sequence"]) \
         .select_related(["book__authors", "book__translations", "book__translations__translator"]) \
         .get_or_none(id=id)
 
