@@ -32,7 +32,7 @@ async def get_sequence(id: int):
 @sequence_router.get("/{id}/books", response_model=CustomPage[SequenceBook], dependencies=[Depends(Params)])
 async def get_sequence_books(id: int):
     return await paginate(
-        BookDB.objects.select_related(["source", "annotations", "authors"])
+        BookDB.objects.select_related(["source", "annotations", "authors", "translators"])
         .filter(sequences__id=id).order_by("sequences__booksequences__position")
     )
 

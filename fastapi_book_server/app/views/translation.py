@@ -22,7 +22,7 @@ translation_router = APIRouter(
 @translation_router.get("/", response_model=CustomPage[Translation], dependencies=[Depends(Params)])
 async def get_translations():
     return await paginate(
-        TranslationDB.objects.prefetch_related(["book", "translator"])
+        TranslationDB.objects.prefetch_related(["book", "author"])
     )
 
 
@@ -30,12 +30,12 @@ async def get_translations():
 async def create_translation(data: Union[CreateTranslation, CreateRemoteTranslation]):
     translation = await TranslationCreator.create(data)
 
-    return await TranslationDB.objects.prefetch_related(["book", "translator"]).get(id=translation.id)
+    return await TranslationDB.objects.prefetch_related(["book", "author"]).get(id=translation.id)
 
 
 @translation_router.delete("/{id}", response_model=Translation)
 async def delete_translation(id: int):
-    translation = await TranslationDB.objects.prefetch_related(["book", "translator"]).get_or_none(id=id)
+    translation = await TranslationDB.objects.prefetch_related(["book", "author"]).get_or_none(id=id)
 
     if translation is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)

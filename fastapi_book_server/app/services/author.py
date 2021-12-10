@@ -39,5 +39,5 @@ SELECT ARRAY(
 
 class AuthorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
-    PREFETCH_RELATED = ["source", "annotations"]
+    PREFETCH_RELATED = ["source", "annotations", "translators"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY

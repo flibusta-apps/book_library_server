@@ -18,10 +18,14 @@ author_router = APIRouter(
 )
 
 
+
+PREFETCH_RELATED = ["source", "annotations"]
+
+
 @author_router.get("/", response_model=CustomPage[Author], dependencies=[Depends(Params)])
 async def get_authors():
     return await paginate(
-        AuthorDB.objects.prefetch_related(["source", "annotations"])
+        AuthorDB.objects.prefetch_related(PREFETCH_RELATED)
     )
 
 
@@ -31,12 +35,12 @@ async def create_author(data: CreateAuthor):
         **data.dict()
     )
 
-    return await AuthorDB.objects.prefetch_related(["source", "annotations"]).get(id=author.id)
+    return await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get(id=author.id)
 
 
 @author_router.get("/{id}", response_model=Author)
 async def get_author(id: int):
-    author = await AuthorDB.objects.prefetch_related(["source", "annotations"]).get_or_none(id=id)
+    author = await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get_or_none(id=id)
 
     if author is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
@@ -69,14 +73,14 @@ async def get_author_annotation(id: int):
 @author_router.get("/{id}/books", response_model=CustomPage[AuthorBook], dependencies=[Depends(Params)])
 async def get_author_books(id: int):
     return await paginate(
-        BookDB.objects.select_related(["source", "annotations"]).filter(authors__id=id).order_by('title')
+        BookDB.objects.select_related(["source", "annotations", "translators"]).filter(authors__id=id).order_by('title')
     )
 
 
 @author_router.get("/{id}/translated_books", response_model=CustomPage[TranslatedBook])
 async def get_translated_books(id: int):
     return await paginate(
-        BookDB.objects.select_related(["translations", "translations__translator"]).filter(translations__translator__id=id)
+        BookDB.objects.select_related(["source", "annotations", "translators"]).filter(translations__translator__id=id)
     )
 
 

@@ -103,6 +103,7 @@ class BookGenres(ormar.Model):
 class BookSequences(ormar.Model):
     class Meta(BaseMeta):
         tablename = "book_sequences"
+        orders_by = ["position", ]
 
     id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
 
@@ -112,6 +113,7 @@ class BookSequences(ormar.Model):
 class Translation(ormar.Model):
     class Meta(BaseMeta):
         tablename = "translations"
+        orders_by = ["position", ]
 
     id: int = ormar.Integer(primary_key=True, nullable=False)  # type: ignore
 

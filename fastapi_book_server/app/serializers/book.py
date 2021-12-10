@@ -19,6 +19,7 @@ class Book(BaseModel):
     available_types: list[str]
     uploaded: date
     authors: list[Author]
+    translators: list[Author]
     annotation_exists: bool
 
     class Config(ORJSONConfig):

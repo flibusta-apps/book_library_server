@@ -47,15 +47,8 @@ class AuthorBook(BaseModel):
     file_type: str
     available_types: list[str]
     uploaded: date
+    translators: list[Author]
     annotation_exists: bool
-
-    class Config(ORJSONConfig):
-        pass
-
-
-class Translation(BaseModel):
-    translator: Author
-    position: int
 
     class Config(ORJSONConfig):
         pass
@@ -66,8 +59,9 @@ class TranslatedBook(BaseModel):
     title: str
     lang: str
     file_type: str
+    available_types: list[str]
     authors: list[Author]
-    translations: list[Translation]
+    annotation_exists: bool
 
     class Config(ORJSONConfig):
         pass
