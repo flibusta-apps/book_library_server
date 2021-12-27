@@ -1,3 +1,5 @@
+from random import choice as random_choice
+
 from fastapi import APIRouter, Depends, Request
 
 from fastapi_pagination import Params
@@ -22,6 +24,15 @@ async def get_sequences():
     return await paginate(
         SequenceDB.objects
     )
+
+
+@sequence_router.get("/random", response_model=Sequence)
+async def get_random_sequence():
+    sequence_ids: list[int] = await SequenceDB.objects.values_list("id", flatten=True)
+
+    sequence_id = random_choice(sequence_ids)
+
+    return await SequenceDB.objects.get(id=sequence_id)
 
 
 @sequence_router.get("/{id}", response_model=Sequence)

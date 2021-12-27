@@ -1,3 +1,5 @@
+from random import choice as random_choice
+
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
@@ -36,6 +38,15 @@ async def create_author(data: CreateAuthor):
     )
 
     return await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get(id=author.id)
+
+
+@author_router.get("/random", response_model=Author)
+async def get_random_author():
+    author_ids: list[int] = await AuthorDB.objects.values_list("id", flatten=True)
+
+    author_id = random_choice(author_ids)
+
+    return await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get(id=author_id)
 
 
 @author_router.get("/{id}", response_model=Author)

@@ -19,7 +19,7 @@ class TRGMSearchService(Generic[T]):
     SELECT_RELATED: Optional[Union[list[str], str]] = None
     PREFETCH_RELATED: Optional[Union[list[str], str]] = None
     GET_OBJECT_IDS_QUERY: Optional[str] = None
-    CACHE_TTL = 5 * 60
+    CACHE_TTL = 60 * 60
 
     @classmethod
     def get_params(cls) -> AbstractParams:

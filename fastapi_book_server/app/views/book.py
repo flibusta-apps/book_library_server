@@ -1,4 +1,5 @@
 from typing import Union
+from random import choice as random_choice
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 
@@ -36,6 +37,15 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
     book = await BookCreator.create(data)
 
     return await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get(id=book.id)
+
+
+@book_router.get("/random", response_model=BookDetail)
+async def get_random_book():
+    book_ids: list[int] = await BookDB.objects.filter(is_deleted=False).values_list("id", flatten=True)
+
+    book_id = random_choice(book_ids)
+
+    return await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get(id=book_id)
 
 
 @book_router.get("/{id}", response_model=BookDetail)
