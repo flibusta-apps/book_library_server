@@ -12,7 +12,7 @@ GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(
     WITH filtered_books AS ( 
         SELECT id, similarity(title, :query) as sml FROM books
-        WHERE books.title % :query
+        WHERE books.title % :query AND books.is_deleted = 'f'
     )
     SELECT fbooks.id FROM filtered_books as fbooks
     ORDER BY fbooks.sml DESC, fbooks.id

@@ -11,15 +11,15 @@ SELECT ARRAY (
             similarity(name, :query) as sml,
             (
                 SELECT count(*) FROM book_sequences
-                LEFT JOIN books ON books.id = book
-                WHERE sequence = sequences.id AND books.is_deleted = 'f'
+                LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+                WHERE sequence = sequences.id 
             ) as books_count
         FROM sequences
         WHERE name % :query AND
         EXISTS (
             SELECT * FROM book_sequences
-            LEFT JOIN books ON books.id = book
-            WHERE sequence = sequences.id AND books.is_deleted = 'f'
+            LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+            WHERE sequence = sequences.id
         )
     )
     SELECT fsequences.id FROM filtered_sequences as fsequences

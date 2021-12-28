@@ -15,8 +15,8 @@ SELECT ARRAY(
             ) as sml,
             (
                 SELECT count(*) FROM book_authors
-                LEFT JOIN books ON books.id = book
-                WHERE author = authors.id AND books.is_deleted = 'f'
+                LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+                WHERE author = authors.id
             ) as books_count
         FROM authors
         WHERE (
@@ -26,8 +26,8 @@ SELECT ARRAY(
         ) AND
         EXISTS (
             SELECT * FROM book_authors
-            LEFT JOIN books ON books.id = book
-            WHERE author = authors.id AND books.is_deleted = 'f'
+            LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+            WHERE author = authors.id 
         )
     )
     SELECT fauthors.id FROM filtered_authors as fauthors

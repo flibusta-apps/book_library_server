@@ -25,6 +25,8 @@ def upgrade():
     op.create_index(op.f('tgrm_authors_lfm'), 'authors', [sa.text("(last_name || ' ' || first_name || ' ' || middle_name)")] ,postgresql_using='gin', postgresql_ops={'description': 'gin_trgm_ops'})
     op.create_index(op.f('tgrm_authors_lf'), 'authors', [sa.text("(last_name || ' ' || first_name)")] ,postgresql_using='gin', postgresql_ops={'description': 'gin_trgm_ops'})
     op.create_index(op.f('tgrm_authors_l'), 'authors', ['last_name'] ,postgresql_using='gin', postgresql_ops={'description': 'gin_trgm_ops'})
+    op.create_index(op.f('book_authors_book'), 'book_authors', ['book'], unique=False, postgresql_using='btree')
+    op.create_index(op.f('book_authors_author'), 'book_authors', ['author'], unique=False, postgresql_using='btree')
     # ### end Alembic commands ###
 
 
@@ -37,4 +39,6 @@ def downgrade():
     op.drop_index(op.f('tgrm_authors_lfm'), table_name='books')
     op.drop_index(op.f('tgrm_authors_lf'), table_name='books')
     op.drop_index(op.f('tgrm_authors_l'), table_name='books')
+    op.drop_index(op.f('book_authors_book'), table_name='book_authors')
+    op.drop_index(op.f('book_authors_author'), table_name='book_authors')
     # ### end Alembic commands ###
