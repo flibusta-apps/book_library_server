@@ -1,6 +1,6 @@
 from app.models import Author
 
-from app.services.common import TRGMSearchService
+from app.services.common import TRGMSearchService, GetRandomService
 
 
 GET_OBJECT_IDS_QUERY = """
@@ -41,3 +41,7 @@ class AuthorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
     PREFETCH_RELATED = ["source", "annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
+
+
+class GetRandomAuthorService(GetRandomService):
+    MODEL_CLASS = Author

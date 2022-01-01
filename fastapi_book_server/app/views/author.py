@@ -9,7 +9,7 @@ from app.utils.pagination import CustomPage
 from app.models import Author as AuthorDB, AuthorAnnotation as AuthorAnnotationDB, Book as BookDB
 from app.serializers.author import Author, CreateAuthor, UpdateAuthor, AuthorBook, TranslatedBook
 from app.serializers.author_annotation import AuthorAnnotation
-from app.services.author import AuthorTGRMSearchService
+from app.services.author import AuthorTGRMSearchService, GetRandomAuthorService
 from app.depends import check_token
 
 
@@ -42,9 +42,7 @@ async def create_author(data: CreateAuthor):
 
 @author_router.get("/random", response_model=Author)
 async def get_random_author():
-    author_ids: list[int] = await AuthorDB.objects.values_list("id", flatten=True)
-
-    author_id = random_choice(author_ids)
+    author_id = await GetRandomAuthorService.get_random_id()
 
     return await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get(id=author_id)
 

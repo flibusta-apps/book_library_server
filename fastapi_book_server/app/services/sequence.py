@@ -1,6 +1,6 @@
 from app.models import Sequence
 
-from app.services.common import TRGMSearchService
+from app.services.common import TRGMSearchService, GetRandomService
 
 
 GET_OBJECT_IDS_QUERY = """
@@ -33,3 +33,7 @@ class SequenceTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Sequence
     PREFETCH_RELATED = ["source"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
+
+
+class GetRandomSequenceService(GetRandomService):
+    MODEL_CLASS = Sequence

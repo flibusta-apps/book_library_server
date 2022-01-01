@@ -122,3 +122,31 @@ class TRGMSearchService(Generic[T]):
             total=total,
             params=params
         )
+
+
+GET_RANDOM_OBJECT_ID_QUERY = """
+SELECT id FROM {table}
+WHERE id >= RANDOM() * (SELECT MAX(id) FROM {table})
+ORDER BY id LIMIT 1;
+"""
+
+
+class GetRandomService(Generic[T]):
+    MODEL_CLASS: Optional[T] = None
+
+    @classmethod
+    @property
+    def model(cls) -> T:
+        assert cls.MODEL_CLASS is not None, f"MODEL in {cls.__name__} don't set!"
+        return cls.MODEL_CLASS
+
+    @classmethod
+    @property
+    def database(cls) -> Database:
+        return cls.model.Meta.database
+
+    @classmethod
+    async def get_random_id(cls) -> int:
+        table_name = cls.model.Meta.tablename
+        query = GET_RANDOM_OBJECT_ID_QUERY.format(table=table_name)
+        return await cls.database.fetch_val(query)

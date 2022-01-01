@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 
 from app.models import Book as BookDB, Author as AuthorDB
 
-from app.services.common import TRGMSearchService
+from app.services.common import TRGMSearchService, GetRandomService
 from app.serializers.book import CreateBook, CreateRemoteBook
 
 
@@ -76,3 +76,7 @@ class BookCreator:
             return await cls._create_book(data)
         if isinstance(data, CreateRemoteBook):
             return await cls._create_remote_book(data)
+
+
+class GetRandomBookService(GetRandomService):
+    MODEL_CLASS = BookDB

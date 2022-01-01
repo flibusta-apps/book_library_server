@@ -8,7 +8,7 @@ from app.utils.pagination import CustomPage
 
 from app.models import Sequence as SequenceDB, Book as BookDB, BookSequences as BookSequencesDB
 from app.serializers.sequence import Sequence, CreateSequence, Book as SequenceBook
-from app.services.sequence import SequenceTGRMSearchService
+from app.services.sequence import SequenceTGRMSearchService, GetRandomSequenceService
 from app.depends import check_token
 
 
@@ -28,9 +28,7 @@ async def get_sequences():
 
 @sequence_router.get("/random", response_model=Sequence)
 async def get_random_sequence():
-    sequence_ids: list[int] = await SequenceDB.objects.values_list("id", flatten=True)
-
-    sequence_id = random_choice(sequence_ids)
+    sequence_id = await GetRandomSequenceService.get_random_id()
 
     return await SequenceDB.objects.get(id=sequence_id)
 
