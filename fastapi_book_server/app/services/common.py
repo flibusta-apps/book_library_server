@@ -1,17 +1,17 @@
 from typing import Optional, Generic, TypeVar, Union
-from databases import Database
 
+import aioredis
+from databases import Database
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
-from app.utils.pagination import Page, CustomPage
-import aioredis
 import orjson
-
 from ormar import Model, QuerySet
 from sqlalchemy import Table
 
+from app.utils.pagination import Page, CustomPage
 
-T = TypeVar('T', bound=Model)
+
+T = TypeVar("T", bound=Model)
 
 
 class TRGMSearchService(Generic[T]):
@@ -48,7 +48,9 @@ class TRGMSearchService(Generic[T]):
     @classmethod
     @property
     def object_ids_query(cls) -> str:
-        assert cls.GET_OBJECT_IDS_QUERY is not None, f"GET_OBJECT_IDS_QUERY in {cls.__name__} don't set!"
+        assert (
+            cls.GET_OBJECT_IDS_QUERY is not None
+        ), f"GET_OBJECT_IDS_QUERY in {cls.__name__} don't set!"
         return cls.GET_OBJECT_IDS_QUERY
 
     @classmethod
@@ -56,9 +58,9 @@ class TRGMSearchService(Generic[T]):
         row = await cls.database.fetch_one(cls.object_ids_query, {"query": query_data})
 
         if row is None:
-            raise ValueError('Something is wrong!')
+            raise ValueError("Something is wrong!")
 
-        return row['array']
+        return row["array"]
 
     @classmethod
     def get_cache_key(cls, query_data: str) -> str:
@@ -66,7 +68,9 @@ class TRGMSearchService(Generic[T]):
         return f"{model_class_name}_{query_data}"
 
     @classmethod
-    async def get_cached_ids(cls, query_data: str, redis: aioredis.Redis) -> Optional[list[int]]:
+    async def get_cached_ids(
+        cls, query_data: str, redis: aioredis.Redis
+    ) -> Optional[list[int]]:
         try:
             key = cls.get_cache_key(query_data)
             data = await redis.get(key)
@@ -80,7 +84,9 @@ class TRGMSearchService(Generic[T]):
             return None
 
     @classmethod
-    async def cache_object_ids(cls, query_data: str, object_ids: list[int], redis: aioredis.Redis):
+    async def cache_object_ids(
+        cls, query_data: str, object_ids: list[int], redis: aioredis.Redis
+    ):
         try:
             key = cls.get_cache_key(query_data)
             await redis.set(key, orjson.dumps(object_ids), ex=cls.CACHE_TTL)
@@ -88,7 +94,9 @@ class TRGMSearchService(Generic[T]):
             print(e)
 
     @classmethod
-    async def get_objects(cls, query_data: str, redis: aioredis.Redis) -> tuple[int, list[T]]:
+    async def get_objects(
+        cls, query_data: str, redis: aioredis.Redis
+    ) -> tuple[int, list[T]]:
         params = cls.get_raw_params()
 
         cached_object_ids = await cls.get_cached_ids(query_data, redis)
@@ -99,7 +107,7 @@ class TRGMSearchService(Generic[T]):
         else:
             object_ids = cached_object_ids
 
-        limited_object_ids = object_ids[params.offset:params.offset + params.limit]
+        limited_object_ids = object_ids[params.offset : params.offset + params.limit]
 
         queryset: QuerySet[T] = cls.model.objects
 
@@ -117,11 +125,7 @@ class TRGMSearchService(Generic[T]):
 
         total, objects = await cls.get_objects(query, redis)
 
-        return CustomPage.create(
-            items=objects,
-            total=total,
-            params=params
-        )
+        return CustomPage.create(items=objects, total=total, params=params)
 
 
 GET_RANDOM_OBJECT_ID_QUERY = """

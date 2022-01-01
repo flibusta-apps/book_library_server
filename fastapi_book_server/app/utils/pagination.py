@@ -1,9 +1,8 @@
 from typing import Protocol, TypeVar, Any, Generic, Sequence, runtime_checkable
 
-from pydantic import conint
-
 from fastapi_pagination import Page, Params
 from fastapi_pagination.bases import AbstractParams
+from pydantic import conint
 
 
 @runtime_checkable
@@ -12,7 +11,7 @@ class ToDict(Protocol):
         ...
 
 
-T = TypeVar('T', ToDict, Any)
+T = TypeVar("T", ToDict, Any)
 
 
 class CustomPage(Page[T], Generic[T]):

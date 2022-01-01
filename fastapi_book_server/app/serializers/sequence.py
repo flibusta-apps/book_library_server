@@ -1,5 +1,6 @@
-from typing import Optional
 from datetime import date
+from typing import Optional
+
 from pydantic import BaseModel
 
 from app.serializers.orjson_config import ORJSONConfig

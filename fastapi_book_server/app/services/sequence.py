@@ -1,18 +1,17 @@
 from app.models import Sequence
-
 from app.services.common import TRGMSearchService, GetRandomService
 
 
 GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY (
     WITH filtered_sequences AS (
-        SELECT 
+        SELECT
             id,
             similarity(name, :query) as sml,
             (
                 SELECT count(*) FROM book_sequences
                 LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
-                WHERE sequence = sequences.id 
+                WHERE sequence = sequences.id
             ) as books_count
         FROM sequences
         WHERE name % :query AND

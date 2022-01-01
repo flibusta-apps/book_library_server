@@ -1,15 +1,15 @@
-from random import choice as random_choice
-
 from fastapi import APIRouter, Depends, Request
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
-from app.utils.pagination import CustomPage
 
-from app.models import Sequence as SequenceDB, Book as BookDB, BookSequences as BookSequencesDB
-from app.serializers.sequence import Sequence, CreateSequence, Book as SequenceBook
-from app.services.sequence import SequenceTGRMSearchService, GetRandomSequenceService
 from app.depends import check_token
+from app.models import Book as BookDB
+from app.models import Sequence as SequenceDB
+from app.serializers.sequence import Book as SequenceBook
+from app.serializers.sequence import Sequence, CreateSequence
+from app.services.sequence import SequenceTGRMSearchService, GetRandomSequenceService
+from app.utils.pagination import CustomPage
 
 
 sequence_router = APIRouter(
@@ -19,11 +19,11 @@ sequence_router = APIRouter(
 )
 
 
-@sequence_router.get("/", response_model=CustomPage[Sequence], dependencies=[Depends(Params)])
+@sequence_router.get(
+    "/", response_model=CustomPage[Sequence], dependencies=[Depends(Params)]
+)
 async def get_sequences():
-    return await paginate(
-        SequenceDB.objects
-    )
+    return await paginate(SequenceDB.objects)
 
 
 @sequence_router.get("/random", response_model=Sequence)
@@ -38,21 +38,30 @@ async def get_sequence(id: int):
     return await SequenceDB.objects.get(id=id)
 
 
-@sequence_router.get("/{id}/books", response_model=CustomPage[SequenceBook], dependencies=[Depends(Params)])
+@sequence_router.get(
+    "/{id}/books",
+    response_model=CustomPage[SequenceBook],
+    dependencies=[Depends(Params)],
+)
 async def get_sequence_books(id: int):
     return await paginate(
-        BookDB.objects.select_related(["source", "annotations", "authors", "translators"])
-        .filter(sequences__id=id).order_by("sequences__booksequences__position")
+        BookDB.objects.select_related(
+            ["source", "annotations", "authors", "translators"]
+        )
+        .filter(sequences__id=id)
+        .order_by("sequences__booksequences__position")
     )
 
 
 @sequence_router.post("/", response_model=Sequence)
 async def create_sequence(data: CreateSequence):
-    return await SequenceDB.objects.create(
-        **data.dict()
-    )
+    return await SequenceDB.objects.create(**data.dict())
 
 
-@sequence_router.get("/search/{query}", response_model=CustomPage[Sequence], dependencies=[Depends(Params)])
+@sequence_router.get(
+    "/search/{query}",
+    response_model=CustomPage[Sequence],
+    dependencies=[Depends(Params)],
+)
 async def search_sequences(query: str, request: Request):
     return await SequenceTGRMSearchService.get(query, request.app.state.redis)

@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.ormar import paginate
 
+from app.depends import check_token
 from app.models import Source as SourceDB
 from app.serializers.source import Source, CreateSource
-from app.depends import check_token
 
 
 source_router = APIRouter(
@@ -22,6 +22,4 @@ async def get_sources():
 
 @source_router.post("", response_model=Source)
 async def create_source(data: CreateSource):
-    return await SourceDB.objects.create(
-        **data.dict()
-    )
+    return await SourceDB.objects.create(**data.dict())

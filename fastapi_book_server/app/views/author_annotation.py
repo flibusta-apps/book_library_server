@@ -3,9 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_pagination import Params, Page
 from fastapi_pagination.ext.ormar import paginate
 
-from app.models import AuthorAnnotation as AuthorAnnotationDB
-from app.serializers.author_annotation import AuthorAnnotation, CreateAuthorAnnotation, UpdateAuthorAnnotation
 from app.depends import check_token
+from app.models import AuthorAnnotation as AuthorAnnotationDB
+from app.serializers.author_annotation import (
+    AuthorAnnotation,
+    CreateAuthorAnnotation,
+    UpdateAuthorAnnotation,
+)
 
 
 author_annotation_router = APIRouter(
@@ -15,18 +19,16 @@ author_annotation_router = APIRouter(
 )
 
 
-@author_annotation_router.get("/", response_model=Page[AuthorAnnotation], dependencies=[Depends(Params)])
+@author_annotation_router.get(
+    "/", response_model=Page[AuthorAnnotation], dependencies=[Depends(Params)]
+)
 async def get_author_annotations():
-    return await paginate(
-        AuthorAnnotationDB.objects
-    )
+    return await paginate(AuthorAnnotationDB.objects)
 
 
 @author_annotation_router.post("/", response_model=AuthorAnnotation)
 async def create_author_annotation(data: CreateAuthorAnnotation):
-    return await AuthorAnnotationDB.objects.create(
-        **data.dict()
-    )
+    return await AuthorAnnotationDB.objects.create(**data.dict())
 
 
 @author_annotation_router.get("/{id}", response_model=AuthorAnnotation)

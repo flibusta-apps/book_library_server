@@ -1,0 +1,35 @@
+name: Linters
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  Run-Pre-Commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 32
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install pre-commit
+        run: pip3 install pre-commit
+
+      - name: Pre-commit (Push)
+        env:
+          SETUPTOOLS_USE_DISTUTILS: stdlib
+        if: ${{ github.event_name == 'push' }}
+        run: pre-commit run --source ${{ github.event.before }} --origin ${{ github.event.after }} --show-diff-on-failure
+
+      - name: Pre-commit (Pull-Request)
+        env:
+          SETUPTOOLS_USE_DISTUTILS: stdlib
+        if: ${{ github.event_name == 'pull_request' }}
+        run: pre-commit run --source ${{ github.event.pull_request.base.sha }} --origin ${{ github.event.pull_request.head.sha }} --show-diff-on-failure

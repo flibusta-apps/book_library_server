@@ -2,15 +2,15 @@ from typing import Union
 
 from fastapi import HTTPException, status
 
-from app.models import Book as BookDB, Author as AuthorDB
-
-from app.services.common import TRGMSearchService, GetRandomService
+from app.models import Author as AuthorDB
+from app.models import Book as BookDB
 from app.serializers.book import CreateBook, CreateRemoteBook
+from app.services.common import TRGMSearchService, GetRandomService
 
 
 GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(
-    WITH filtered_books AS ( 
+    WITH filtered_books AS (
         SELECT id, similarity(title, :query) as sml FROM books
         WHERE books.title % :query AND books.is_deleted = 'f'
     )
@@ -42,9 +42,7 @@ class BookCreator:
         if len(author_ids) != len(authors):
             cls._raise_bad_request()
 
-        book = await BookDB.objects.create(
-            **data_dict
-        )
+        book = await BookDB.objects.create(**data_dict)
 
         for author in authors:
             await book.authors.add(author)
@@ -56,14 +54,14 @@ class BookCreator:
         data_dict = data.dict()
 
         author_ids = data_dict.pop("remote_authors", [])
-        authors = await AuthorDB.objects.filter(source__id=data.source, remote_id__in=author_ids).all()
+        authors = await AuthorDB.objects.filter(
+            source__id=data.source, remote_id__in=author_ids
+        ).all()
 
         if len(author_ids) != len(authors):
             cls._raise_bad_request()
 
-        book = await BookDB.objects.create(
-            **data_dict
-        )
+        book = await BookDB.objects.create(**data_dict)
 
         for author in authors:
             await book.authors.add(author)

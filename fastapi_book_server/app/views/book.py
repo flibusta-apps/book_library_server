@@ -1,18 +1,26 @@
 from typing import Union
-from random import choice as random_choice
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
-from app.utils.pagination import CustomPage
 
-from app.models import Book as BookDB, Author as AuthorDB, BookAnnotation as BookAnnotationDB
-from app.serializers.book import Book, RemoteBook, BookDetail, CreateBook, UpdateBook, CreateRemoteBook
+from app.depends import check_token
+from app.filters.book import get_book_filter
+from app.models import Author as AuthorDB
+from app.models import Book as BookDB
+from app.models import BookAnnotation as BookAnnotationDB
+from app.serializers.book import (
+    Book,
+    RemoteBook,
+    BookDetail,
+    CreateBook,
+    UpdateBook,
+    CreateRemoteBook,
+)
 from app.serializers.book_annotation import BookAnnotation
 from app.services.book import BookTGRMSearchService, GetRandomBookService, BookCreator
-from app.filters.book import get_book_filter
-from app.depends import check_token
+from app.utils.pagination import CustomPage
 
 
 book_router = APIRouter(
@@ -22,10 +30,12 @@ book_router = APIRouter(
 )
 
 
-SELECT_RELATED_FIELDS = ["source",  "authors", "translators", "annotations"]
+SELECT_RELATED_FIELDS = ["source", "authors", "translators", "annotations"]
 
 
-@book_router.get("/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)])
+@book_router.get(
+    "/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)]
+)
 async def get_books(book_filter: dict = Depends(get_book_filter)):
     return await paginate(
         BookDB.objects.select_related(SELECT_RELATED_FIELDS).filter(**book_filter)
@@ -49,7 +59,7 @@ async def get_random_book():
 @book_router.get("/{id}", response_model=BookDetail)
 async def get_book(id: int):
     book = await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get_or_none(id=id)
-    
+
     if book is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
 
@@ -59,8 +69,7 @@ async def get_book(id: int):
 @book_router.get("/remote/{source_id}/{remote_id}", response_model=Book)
 async def get_remote_book(source_id: int, remote_id: int):
     book = await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get_or_none(
-        source=source_id,
-        remote_id=remote_id
+        source=source_id, remote_id=remote_id
     )
 
     if book is None:
@@ -84,9 +93,7 @@ async def update_book(id: int, data: UpdateBook):
     author_ids = data_dict.pop("authors", [])
     authors = await AuthorDB.objects.filter(id__in=author_ids).all()
 
-    book = await BookDB.objects.create(
-        **data_dict
-    )
+    book = await BookDB.objects.create(**data_dict)
 
     for author in authors:
         await book.authors.add(author)
@@ -104,6 +111,8 @@ async def get_book_annotation(id: int):
     return annotation
 
 
-@book_router.get("/search/{query}", response_model=CustomPage[Book], dependencies=[Depends(Params)])
+@book_router.get(
+    "/search/{query}", response_model=CustomPage[Book], dependencies=[Depends(Params)]
+)
 async def search_books(query: str, request: Request):
     return await BookTGRMSearchService.get(query, request.app.state.redis)
