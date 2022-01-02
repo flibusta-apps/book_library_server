@@ -13,6 +13,7 @@ SELECT ARRAY(
     WITH filtered_books AS (
         SELECT id, similarity(title, :query) as sml FROM books
         WHERE books.title % :query AND books.is_deleted = 'f'
+              AND books.lang = ANY(:langs ::text[])
     )
     SELECT fbooks.id FROM filtered_books as fbooks
     ORDER BY fbooks.sml DESC, fbooks.id
@@ -76,5 +77,16 @@ class BookCreator:
             return await cls._create_remote_book(data)
 
 
+GET_RANDOM_OBJECT_ID_QUERY = """
+WITH filtered_books AS (
+    SELECT id FROM books
+    WHERE books.is_deleted = 'f' AND books.lang = ANY(:langs ::text[])
+)
+SELECT id FROM filtered_books
+ORDER BY RANDOM() LIMIT 1;
+"""
+
+
 class GetRandomBookService(GetRandomService):
     MODEL_CLASS = BookDB
+    GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY

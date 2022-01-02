@@ -10,14 +10,20 @@ SELECT ARRAY (
             similarity(name, :query) as sml,
             (
                 SELECT count(*) FROM book_sequences
-                LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+                LEFT JOIN books
+                ON (books.id = book AND
+                    books.is_deleted = 'f' AND
+                    books.lang = ANY(:langs ::text[]))
                 WHERE sequence = sequences.id
             ) as books_count
         FROM sequences
         WHERE name % :query AND
         EXISTS (
             SELECT * FROM book_sequences
-            LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+            LEFT JOIN books
+            ON (books.id = book AND
+                books.is_deleted = 'f' AND
+                books.lang = ANY(:langs ::text[]))
             WHERE sequence = sequences.id
         )
     )
@@ -34,5 +40,23 @@ class SequenceTGRMSearchService(TRGMSearchService):
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
+GET_RANDOM_OBJECT_ID_QUERY = """
+WITH filtered_sequences AS (
+    SELECT id FROM sequences
+    WHERE EXISTS (
+        SELECT * FROM book_sequences
+        LEFT JOIN books
+        ON (books.id = book AND
+            books.is_deleted = 'f' AND
+            books.lang = ANY(:langs ::text[]))
+        WHERE sequence = sequences.id
+    )
+)
+SELECT id FROM filtered_sequences
+ORDER BY RANDOM() LIMIT 1;
+"""
+
+
 class GetRandomSequenceService(GetRandomService):
     MODEL_CLASS = Sequence
+    GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY

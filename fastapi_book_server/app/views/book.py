@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
-from app.depends import check_token
+from app.depends import check_token, get_allowed_langs
 from app.filters.book import get_book_filter
 from app.models import Author as AuthorDB
 from app.models import Book as BookDB
@@ -50,8 +50,8 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
 
 
 @book_router.get("/random", response_model=BookDetail)
-async def get_random_book():
-    book_id = await GetRandomBookService.get_random_id()
+async def get_random_book(allowed_langs: list[str] = Depends(get_allowed_langs)):
+    book_id = await GetRandomBookService.get_random_id(allowed_langs)
 
     return await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get(id=book_id)
 
@@ -114,5 +114,9 @@ async def get_book_annotation(id: int):
 @book_router.get(
     "/search/{query}", response_model=CustomPage[Book], dependencies=[Depends(Params)]
 )
-async def search_books(query: str, request: Request):
-    return await BookTGRMSearchService.get(query, request.app.state.redis)
+async def search_books(
+    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
+    return await BookTGRMSearchService.get(
+        query, request.app.state.redis, allowed_langs
+    )

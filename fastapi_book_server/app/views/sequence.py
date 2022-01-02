@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
-from app.depends import check_token
+from app.depends import check_token, get_allowed_langs
 from app.models import Book as BookDB
 from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
@@ -27,8 +27,8 @@ async def get_sequences():
 
 
 @sequence_router.get("/random", response_model=Sequence)
-async def get_random_sequence():
-    sequence_id = await GetRandomSequenceService.get_random_id()
+async def get_random_sequence(allowed_langs: list[str] = Depends(get_allowed_langs)):
+    sequence_id = await GetRandomSequenceService.get_random_id(allowed_langs)
 
     return await SequenceDB.objects.get(id=sequence_id)
 
@@ -43,12 +43,14 @@ async def get_sequence(id: int):
     response_model=CustomPage[SequenceBook],
     dependencies=[Depends(Params)],
 )
-async def get_sequence_books(id: int):
+async def get_sequence_books(
+    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
     return await paginate(
         BookDB.objects.select_related(
             ["source", "annotations", "authors", "translators"]
         )
-        .filter(sequences__id=id)
+        .filter(sequences__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("sequences__booksequences__position")
     )
 
@@ -63,5 +65,9 @@ async def create_sequence(data: CreateSequence):
     response_model=CustomPage[Sequence],
     dependencies=[Depends(Params)],
 )
-async def search_sequences(query: str, request: Request):
-    return await SequenceTGRMSearchService.get(query, request.app.state.redis)
+async def search_sequences(
+    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
+    return await SequenceTGRMSearchService.get(
+        query, request.app.state.redis, allowed_langs
+    )

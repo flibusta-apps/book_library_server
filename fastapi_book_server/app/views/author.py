@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
-from app.depends import check_token
+from app.depends import check_token, get_allowed_langs
 from app.models import Author as AuthorDB
 from app.models import AuthorAnnotation as AuthorAnnotationDB
 from app.models import Book as BookDB
@@ -44,8 +44,8 @@ async def create_author(data: CreateAuthor):
 
 
 @author_router.get("/random", response_model=Author)
-async def get_random_author():
-    author_id = await GetRandomAuthorService.get_random_id()
+async def get_random_author(allowed_langs: list[str] = Depends(get_allowed_langs)):
+    author_id = await GetRandomAuthorService.get_random_id(allowed_langs)
 
     return await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get(id=author_id)
 
@@ -87,19 +87,25 @@ async def get_author_annotation(id: int):
 @author_router.get(
     "/{id}/books", response_model=CustomPage[AuthorBook], dependencies=[Depends(Params)]
 )
-async def get_author_books(id: int):
+async def get_author_books(
+    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
     return await paginate(
         BookDB.objects.select_related(["source", "annotations", "translators"])
-        .filter(authors__id=id)
+        .filter(authors__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("title")
     )
 
 
 @author_router.get("/{id}/translated_books", response_model=CustomPage[TranslatedBook])
-async def get_translated_books(id: int):
+async def get_translated_books(
+    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
     return await paginate(
         BookDB.objects.select_related(["source", "annotations", "translators"]).filter(
-            translations__translator__id=id
+            translations__translator__id=id,
+            lang__in=allowed_langs,
+            is_deleted=False,
         )
     )
 
@@ -107,5 +113,9 @@ async def get_translated_books(id: int):
 @author_router.get(
     "/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)]
 )
-async def search_authors(query: str, request: Request):
-    return await AuthorTGRMSearchService.get(query, request.app.state.redis)
+async def search_authors(
+    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
+    return await AuthorTGRMSearchService.get(
+        query, request.app.state.redis, allowed_langs
+    )

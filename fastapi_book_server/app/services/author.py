@@ -17,7 +17,10 @@ SELECT ARRAY(
             ) as sml,
             (
                 SELECT count(*) FROM book_authors
-                LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+                LEFT JOIN books
+                ON (books.id = book AND
+                    books.is_deleted = 'f' AND
+                    books.lang = ANY(:langs ::text[]))
                 WHERE author = authors.id
             ) as books_count
         FROM authors
@@ -28,7 +31,10 @@ SELECT ARRAY(
         ) AND
         EXISTS (
             SELECT * FROM book_authors
-            LEFT JOIN books ON (books.id = book AND books.is_deleted = 'f')
+            LEFT JOIN books
+            ON (books.id = book AND
+                books.is_deleted = 'f' AND
+                books.lang = ANY(:langs ::text[]))
             WHERE author = authors.id
         )
     )
@@ -45,5 +51,23 @@ class AuthorTGRMSearchService(TRGMSearchService):
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
+GET_RANDOM_OBJECT_ID_QUERY = """
+WITH filtered_authors AS (
+    SELECT id FROM authors
+    WHERE EXISTS (
+        SELECT * FROM book_authors
+        LEFT JOIN books
+        ON (books.id = book AND
+            books.is_deleted = 'f' AND
+            books.lang = ANY(:langs ::text[]))
+        WHERE author = authors.id
+    )
+)
+SELECT id FROM filtered_authors
+ORDER BY RANDOM() LIMIT 1;
+"""
+
+
 class GetRandomAuthorService(GetRandomService):
     MODEL_CLASS = Author
+    GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY
