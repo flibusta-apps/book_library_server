@@ -16,6 +16,7 @@ from app.serializers.author import (
 )
 from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorTGRMSearchService, GetRandomAuthorService
+from app.services.translator import TranslatorTGRMSearchService
 from app.utils.pagination import CustomPage
 
 
@@ -97,19 +98,6 @@ async def get_author_books(
     )
 
 
-@author_router.get("/{id}/translated_books", response_model=CustomPage[TranslatedBook])
-async def get_translated_books(
-    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
-):
-    return await paginate(
-        BookDB.objects.select_related(["source", "annotations", "translators"]).filter(
-            translations__translator__id=id,
-            lang__in=allowed_langs,
-            is_deleted=False,
-        )
-    )
-
-
 @author_router.get(
     "/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)]
 )
@@ -117,5 +105,36 @@ async def search_authors(
     query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
     return await AuthorTGRMSearchService.get(
+        query, request.app.state.redis, allowed_langs
+    )
+
+
+translator_router = APIRouter(
+    prefix="/api/v1/translators",
+    tags=["author"],
+    dependencies=[Depends(check_token)],
+)
+
+
+@translator_router.get("/{id}/books", response_model=CustomPage[TranslatedBook])
+async def get_translated_books(
+    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
+    return await paginate(
+        BookDB.objects.select_related(["source", "annotations", "authors"]).filter(
+            translators__id=id,
+            lang__in=allowed_langs,
+            is_deleted=False,
+        )
+    )
+
+
+@translator_router.get(
+    "/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)]
+)
+async def search_translators(
+    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+):
+    return await TranslatorTGRMSearchService.get(
         query, request.app.state.redis, allowed_langs
     )

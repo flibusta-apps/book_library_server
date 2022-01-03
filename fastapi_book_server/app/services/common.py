@@ -19,6 +19,7 @@ class TRGMSearchService(Generic[T]):
     SELECT_RELATED: Optional[Union[list[str], str]] = None
     PREFETCH_RELATED: Optional[Union[list[str], str]] = None
     GET_OBJECT_IDS_QUERY: Optional[str] = None
+    CUSTOM_CACHE_PREFIX: Optional[str] = None
     CACHE_TTL = 60 * 60
 
     @classmethod
@@ -67,8 +68,13 @@ class TRGMSearchService(Generic[T]):
         return row["array"]
 
     @classmethod
+    @property
+    def cache_prefix(cls) -> str:
+        return cls.CUSTOM_CACHE_PREFIX or cls.model.__class__.__name__
+
+    @classmethod
     def get_cache_key(cls, query_data: str, allowed_langs: list[str]) -> str:
-        model_class_name = cls.model.__class__.__name__
+        model_class_name = cls.cache_prefix
         allowed_langs_part = ",".join(allowed_langs)
         return f"{model_class_name}_{query_data}_{allowed_langs_part}"
 

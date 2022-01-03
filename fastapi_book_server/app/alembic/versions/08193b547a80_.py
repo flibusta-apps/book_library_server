@@ -90,6 +90,20 @@ def upgrade():
         unique=False,
         postgresql_using="btree",
     )
+    op.create_index(
+        op.f("translations_book"),
+        "translations",
+        ["book"],
+        unique=False,
+        postgresql_using="btree",
+    )
+    op.create_index(
+        op.f("translations_author"),
+        "translations",
+        ["author"],
+        unique=False,
+        postgresql_using="btree",
+    )
     # ### end Alembic commands ###
 
 
@@ -108,4 +122,6 @@ def downgrade():
     op.drop_index(op.f("book_authors_author"), table_name="book_authors")
     op.drop_index(op.f("book_sequences_book"), table_name="book_sequences")
     op.drop_index(op.f("book_sequences_sequence"), table_name="book_sequences")
+    op.drop_index(op.f("translations_book"), table_name="translations")
+    op.drop_index(op.f("translations_author"), table_name="translations")
     # ### end Alembic commands ###
