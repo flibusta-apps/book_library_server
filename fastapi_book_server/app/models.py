@@ -143,8 +143,10 @@ class Book(ormar.Model):
     title: str = ormar.String(
         max_length=256, nullable=False, index=True
     )  # type: ignore
-    lang: str = ormar.String(max_length=3, nullable=False)  # type: ignore
-    file_type: str = ormar.String(max_length=4, nullable=False)  # type: ignore
+    lang: str = ormar.String(max_length=3, nullable=False, index=True)  # type: ignore
+    file_type: str = ormar.String(
+        max_length=4, nullable=False, index=True
+    )  # type: ignore
     uploaded: date = ormar.Date()  # type: ignore
     is_deleted: bool = ormar.Boolean(
         default=False, server_default=text("false"), nullable=False
