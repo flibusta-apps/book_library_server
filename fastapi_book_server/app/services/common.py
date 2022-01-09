@@ -75,7 +75,7 @@ class TRGMSearchService(Generic[T]):
     @classmethod
     def get_cache_key(cls, query_data: str, allowed_langs: list[str]) -> str:
         model_class_name = cls.cache_prefix
-        allowed_langs_part = ",".join(allowed_langs)
+        allowed_langs_part = ",".join(sorted(allowed_langs))
         return f"{model_class_name}_{query_data}_{allowed_langs_part}"
 
     @classmethod
@@ -130,7 +130,7 @@ class TRGMSearchService(Generic[T]):
 
         limited_object_ids = object_ids[params.offset : params.offset + params.limit]
 
-        queryset: QuerySet[T] = cls.model.objects
+        queryset: QuerySet[T] = cls.model.objects  # type: ignore
 
         if cls.PREFETCH_RELATED is not None:
             queryset = queryset.prefetch_related(cls.PREFETCH_RELATED)
