@@ -24,7 +24,8 @@ SELECT ARRAY(
 
 class BookTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = BookDB
-    PREFETCH_RELATED = ["source", "authors", "translators", "annotations"]
+    SELECT_RELATED = ["source"]
+    PREFETCH_RELATED = ["authors", "translators", "annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 

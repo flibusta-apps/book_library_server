@@ -29,8 +29,8 @@ book_router = APIRouter(
     dependencies=[Depends(check_token)],
 )
 
-
-SELECT_RELATED_FIELDS = ["source", "authors", "translators", "annotations"]
+SELECT_RELATED_FIELDS = ["source"]
+PREFETCH_RELATED_FIELDS = ["authors", "translators", "annotations"]
 
 
 @book_router.get(
@@ -38,7 +38,9 @@ SELECT_RELATED_FIELDS = ["source", "authors", "translators", "annotations"]
 )
 async def get_books(book_filter: dict = Depends(get_book_filter)):
     return await paginate(
-        BookDB.objects.select_related(SELECT_RELATED_FIELDS).filter(**book_filter)
+        BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .filter(**book_filter)
     )
 
 
@@ -46,19 +48,31 @@ async def get_books(book_filter: dict = Depends(get_book_filter)):
 async def create_book(data: Union[CreateBook, CreateRemoteBook]):
     book = await BookCreator.create(data)
 
-    return await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get(id=book.id)
+    return (
+        await BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get(id=book.id)
+    )
 
 
 @book_router.get("/random", response_model=BookDetail)
 async def get_random_book(allowed_langs: list[str] = Depends(get_allowed_langs)):
     book_id = await GetRandomBookService.get_random_id(allowed_langs)
 
-    return await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get(id=book_id)
+    return (
+        await BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get(id=book_id)
+    )
 
 
 @book_router.get("/{id}", response_model=BookDetail)
 async def get_book(id: int):
-    book = await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get_or_none(id=id)
+    book = (
+        await BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get_or_none(id=id)
+    )
 
     if book is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
@@ -68,8 +82,10 @@ async def get_book(id: int):
 
 @book_router.get("/remote/{source_id}/{remote_id}", response_model=Book)
 async def get_remote_book(source_id: int, remote_id: int):
-    book = await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get_or_none(
-        source=source_id, remote_id=remote_id
+    book = (
+        await BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get_or_none(source=source_id, remote_id=remote_id)
     )
 
     if book is None:
@@ -80,7 +96,11 @@ async def get_remote_book(source_id: int, remote_id: int):
 
 @book_router.put("/{id}", response_model=Book)
 async def update_book(id: int, data: UpdateBook):
-    book = await BookDB.objects.select_related(SELECT_RELATED_FIELDS).get_or_none(id=id)
+    book = (
+        await BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get_or_none(id=id)
+    )
 
     if book is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)

@@ -27,21 +27,21 @@ translation_router = APIRouter(
     "/", response_model=CustomPage[Translation], dependencies=[Depends(Params)]
 )
 async def get_translations():
-    return await paginate(TranslationDB.objects.prefetch_related(["book", "author"]))
+    return await paginate(TranslationDB.objects.select_related(["book", "author"]))
 
 
 @translation_router.post("/", response_model=Translation)
 async def create_translation(data: Union[CreateTranslation, CreateRemoteTranslation]):
     translation = await TranslationCreator.create(data)
 
-    return await TranslationDB.objects.prefetch_related(["book", "author"]).get(
+    return await TranslationDB.objects.select_related(["book", "author"]).get(
         id=translation.id
     )
 
 
 @translation_router.delete("/{id}", response_model=Translation)
 async def delete_translation(id: int):
-    translation = await TranslationDB.objects.prefetch_related(
+    translation = await TranslationDB.objects.select_related(
         ["book", "author"]
     ).get_or_none(id=id)
 

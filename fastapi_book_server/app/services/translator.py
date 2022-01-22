@@ -48,5 +48,6 @@ SELECT ARRAY(
 class TranslatorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
     CUSTOM_CACHE_PREFIX = "translator"
-    PREFETCH_RELATED = ["source", "annotations"]
+    SELECT_RELATED = ["source"]
+    PREFETCH_RELATED = ["annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY

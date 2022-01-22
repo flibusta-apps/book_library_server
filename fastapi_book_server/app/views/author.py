@@ -27,34 +27,49 @@ author_router = APIRouter(
 )
 
 
-PREFETCH_RELATED = ["source", "annotations"]
+SELECT_RELATED_FIELDS = ["source"]
+PREFETCH_RELATED_FIELDS = ["annotations"]
 
 
 @author_router.get(
     "/", response_model=CustomPage[Author], dependencies=[Depends(Params)]
 )
 async def get_authors():
-    return await paginate(AuthorDB.objects.prefetch_related(PREFETCH_RELATED))
+    return await paginate(
+        AuthorDB.objects.select_related(SELECT_RELATED_FIELDS).prefetch_related(
+            PREFETCH_RELATED_FIELDS
+        )
+    )
 
 
 @author_router.post("/", response_model=Author, dependencies=[Depends(Params)])
 async def create_author(data: CreateAuthor):
     author = await AuthorDB.objects.create(**data.dict())
 
-    return await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get(id=author.id)
+    return (
+        await AuthorDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get(id=author.id)
+    )
 
 
 @author_router.get("/random", response_model=Author)
 async def get_random_author(allowed_langs: list[str] = Depends(get_allowed_langs)):
     author_id = await GetRandomAuthorService.get_random_id(allowed_langs)
 
-    return await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get(id=author_id)
+    return (
+        await AuthorDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get(id=author_id)
+    )
 
 
 @author_router.get("/{id}", response_model=Author)
 async def get_author(id: int):
-    author = await AuthorDB.objects.prefetch_related(PREFETCH_RELATED).get_or_none(
-        id=id
+    author = (
+        await AuthorDB.objects.select_related(SELECT_RELATED_FIELDS)
+        .prefetch_related(PREFETCH_RELATED_FIELDS)
+        .get_or_none(id=id)
     )
 
     if author is None:
@@ -92,7 +107,8 @@ async def get_author_books(
     id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
     return await paginate(
-        BookDB.objects.select_related(["source", "annotations", "translators"])
+        BookDB.objects.select_related(["source"])
+        .prefetch_related(["annotations", "translators"])
         .filter(authors__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("title")
     )
@@ -121,7 +137,9 @@ async def get_translated_books(
     id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
     return await paginate(
-        BookDB.objects.select_related(["source", "annotations", "authors"]).filter(
+        BookDB.objects.select_related(["source"])
+        .prefetch_related(["annotations", "authors"])
+        .filter(
             translators__id=id,
             lang__in=allowed_langs,
             is_deleted=False,

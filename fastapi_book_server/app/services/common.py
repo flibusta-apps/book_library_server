@@ -70,7 +70,7 @@ class TRGMSearchService(Generic[T]):
     @classmethod
     @property
     def cache_prefix(cls) -> str:
-        return cls.CUSTOM_CACHE_PREFIX or cls.model.__class__.__name__
+        return cls.CUSTOM_CACHE_PREFIX or cls.model.Meta.tablename
 
     @classmethod
     def get_cache_key(cls, query_data: str, allowed_langs: list[str]) -> str:
@@ -90,7 +90,7 @@ class TRGMSearchService(Generic[T]):
             data = await redis.get(key)
 
             if data is None:
-                return data
+                return None
 
             return orjson.loads(data)
         except aioredis.RedisError as e:

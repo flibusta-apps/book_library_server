@@ -36,7 +36,7 @@ SELECT ARRAY (
 
 class SequenceTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Sequence
-    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["source"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
