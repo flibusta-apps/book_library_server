@@ -32,6 +32,7 @@ COPY --from=build-image $VENV_PATH $VENV_PATH
 ENV PATH="$VENV_PATH/bin:$PATH"
 
 COPY ./scripts/start.sh /root/
+COPY ./scripts/healthcheck.py /root/
 
 EXPOSE 8080
 
