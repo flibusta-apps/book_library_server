@@ -17,11 +17,9 @@ SELECT ARRAY(
             ) as sml,
             (
                 SELECT count(*) FROM book_authors
-                LEFT JOIN books
-                ON (books.id = book AND
-                    books.is_deleted = 'f' AND
-                    books.lang = ANY(:langs ::text[]))
-                WHERE author = authors.id
+                LEFT JOIN books ON (books.id = book)
+                WHERE author = authors.id AND books.is_deleted = 'f'
+                    AND books.lang = ANY(:langs ::text[])
             ) as books_count
         FROM authors
         WHERE (
@@ -31,11 +29,9 @@ SELECT ARRAY(
         ) AND
         EXISTS (
             SELECT * FROM book_authors
-            LEFT JOIN books
-            ON (books.id = book AND
-                books.is_deleted = 'f' AND
-                books.lang = ANY(:langs ::text[]))
-            WHERE author = authors.id
+            LEFT JOIN books ON (books.id = book)
+            WHERE author = authors.id AND books.is_deleted = 'f'
+                AND books.lang = ANY(:langs ::text[])
         )
     )
     SELECT fauthors.id FROM filtered_authors as fauthors
@@ -57,11 +53,9 @@ WITH filtered_authors AS (
     SELECT id FROM authors
     WHERE EXISTS (
         SELECT * FROM book_authors
-        LEFT JOIN books
-        ON (books.id = book AND
-            books.is_deleted = 'f' AND
-            books.lang = ANY(:langs ::text[]))
-        WHERE author = authors.id
+        LEFT JOIN books ON (books.id = book)
+        WHERE author = authors.id AND books.is_deleted = 'f'
+            AND books.lang = ANY(:langs ::text[])
     )
 )
 SELECT id FROM filtered_authors
