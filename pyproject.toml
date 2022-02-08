@@ -18,6 +18,7 @@ aiologger = "^0.6.1"
 orjson = "^3.6.4"
 aioredis = "^2.0.0"
 httpx = "^0.22.0"
+meilisearch = "^0.18.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

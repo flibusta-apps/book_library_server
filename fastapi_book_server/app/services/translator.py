@@ -1,5 +1,5 @@
 from app.models import Author
-from app.services.common import TRGMSearchService
+from app.services.common import TRGMSearchService, MeiliSearchService
 
 
 GET_OBJECT_IDS_QUERY = """
@@ -47,3 +47,13 @@ class TranslatorTGRMSearchService(TRGMSearchService):
     SELECT_RELATED = ["source"]
     PREFETCH_RELATED = ["annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
+
+
+class TranslatorMeiliSearchService(MeiliSearchService):
+    MODEL_CLASS = Author
+    CUSTOM_CACHE_PREFIX = "translator"
+    SELECT_RELATED = ["source"]
+    PREFETCH_RELATED = ["annotations"]
+
+    MS_INDEX_NAME = "authors"
+    MS_INDEX_LANG_KEY = "translator_langs"

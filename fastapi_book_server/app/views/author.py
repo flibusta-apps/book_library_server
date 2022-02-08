@@ -15,8 +15,8 @@ from app.serializers.author import (
     TranslatedBook,
 )
 from app.serializers.author_annotation import AuthorAnnotation
-from app.services.author import AuthorTGRMSearchService, GetRandomAuthorService
-from app.services.translator import TranslatorTGRMSearchService
+from app.services.author import AuthorMeiliSearchService, GetRandomAuthorService
+from app.services.translator import TranslatorMeiliSearchService
 from app.utils.pagination import CustomPage
 
 
@@ -120,7 +120,7 @@ async def get_author_books(
 async def search_authors(
     query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
-    return await AuthorTGRMSearchService.get(
+    return await AuthorMeiliSearchService.get(
         query, request.app.state.redis, allowed_langs
     )
 
@@ -153,6 +153,6 @@ async def get_translated_books(
 async def search_translators(
     query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
-    return await TranslatorTGRMSearchService.get(
+    return await TranslatorMeiliSearchService.get(
         query, request.app.state.redis, allowed_langs
     )

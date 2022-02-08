@@ -19,7 +19,7 @@ from app.serializers.book import (
     CreateRemoteBook,
 )
 from app.serializers.book_annotation import BookAnnotation
-from app.services.book import BookTGRMSearchService, GetRandomBookService, BookCreator
+from app.services.book import BookMeiliSearchService, GetRandomBookService, BookCreator
 from app.utils.pagination import CustomPage
 
 
@@ -137,6 +137,6 @@ async def get_book_annotation(id: int):
 async def search_books(
     query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
-    return await BookTGRMSearchService.get(
+    return await BookMeiliSearchService.get(
         query, request.app.state.redis, allowed_langs
     )

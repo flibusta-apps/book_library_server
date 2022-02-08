@@ -1,24 +1,28 @@
+import abc
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Generic, TypeVar, Union
 
 import aioredis
 from databases import Database
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
+import meilisearch
 import orjson
 from ormar import Model, QuerySet
 from sqlalchemy import Table
 
 from app.utils.pagination import Page, CustomPage
+from core.config import env_config
 
 
 T = TypeVar("T", bound=Model)
 
 
-class TRGMSearchService(Generic[T]):
+class BaseSearchService(Generic[T], abc.ABC):
     MODEL_CLASS: Optional[T] = None
     SELECT_RELATED: Optional[Union[list[str], str]] = None
     PREFETCH_RELATED: Optional[Union[list[str], str]] = None
-    GET_OBJECT_IDS_QUERY: Optional[str] = None
     CUSTOM_CACHE_PREFIX: Optional[str] = None
     CACHE_TTL = 60 * 60
 
@@ -48,29 +52,14 @@ class TRGMSearchService(Generic[T]):
 
     @classmethod
     @property
-    def object_ids_query(cls) -> str:
-        assert (
-            cls.GET_OBJECT_IDS_QUERY is not None
-        ), f"GET_OBJECT_IDS_QUERY in {cls.__name__} don't set!"
-        return cls.GET_OBJECT_IDS_QUERY
+    def cache_prefix(cls) -> str:
+        return cls.CUSTOM_CACHE_PREFIX or cls.model.Meta.tablename
 
     @classmethod
     async def _get_object_ids(
         cls, query_data: str, allowed_langs: list[str]
     ) -> list[int]:
-        row = await cls.database.fetch_one(
-            cls.object_ids_query, {"query": query_data, "langs": allowed_langs}
-        )
-
-        if row is None:
-            raise ValueError("Something is wrong!")
-
-        return row["array"]
-
-    @classmethod
-    @property
-    def cache_prefix(cls) -> str:
-        return cls.CUSTOM_CACHE_PREFIX or cls.model.Meta.tablename
+        ...
 
     @classmethod
     def get_cache_key(cls, query_data: str, allowed_langs: list[str]) -> str:
@@ -149,6 +138,92 @@ class TRGMSearchService(Generic[T]):
         total, objects = await cls.get_objects(query, redis, allowed_langs)
 
         return CustomPage.create(items=objects, total=total, params=params)
+
+
+class TRGMSearchService(BaseSearchService[T]):
+    GET_OBJECT_IDS_QUERY: Optional[str] = None
+
+    @classmethod
+    @property
+    def object_ids_query(cls) -> str:
+        assert (
+            cls.GET_OBJECT_IDS_QUERY is not None
+        ), f"GET_OBJECT_IDS_QUERY in {cls.__name__} don't set!"
+        return cls.GET_OBJECT_IDS_QUERY
+
+    @classmethod
+    async def _get_object_ids(
+        cls, query_data: str, allowed_langs: list[str]
+    ) -> list[int]:
+        row = await cls.database.fetch_one(
+            cls.object_ids_query, {"query": query_data, "langs": allowed_langs}
+        )
+
+        if row is None:
+            raise ValueError("Something is wrong!")
+
+        return row["array"]
+
+
+class MeiliSearchService(BaseSearchService[T]):
+    MS_INDEX_NAME: Optional[str] = None
+    MS_INDEX_LANG_KEY: Optional[str] = None
+
+    _executor = ThreadPoolExecutor(4)
+
+    @classmethod
+    @property
+    def lang_key(cls) -> str:
+        assert cls.MS_INDEX_LANG_KEY is not None, f"MODEL in {cls.__name__} don't set!"
+        return cls.MS_INDEX_LANG_KEY
+
+    @classmethod
+    @property
+    def index_name(cls) -> str:
+        assert cls.MS_INDEX_NAME is not None, f"MODEL in {cls.__name__} don't set!"
+        return cls.MS_INDEX_NAME
+
+    @classmethod
+    def get_allowed_langs_filter(cls, allowed_langs: list[str]) -> list[list[str]]:
+        return [[f"{cls.lang_key} = {lang}" for lang in allowed_langs]]
+
+    @classmethod
+    def make_request(
+        cls, query: str, allowed_langs_filter: list[list[str]], offset: int
+    ):
+        client = meilisearch.Client(env_config.MEILI_HOST, env_config.MEILI_MASTER_KEY)
+        index = client.index(cls.index_name)
+
+        result = index.search(
+            query,
+            {
+                "filter": allowed_langs_filter,
+                "offset": offset,
+                "limit": 630,
+                "attributesToRetrieve": ["id"],
+            },
+        )
+
+        total: int = result["nbHits"]
+        ids: list[int] = [r["id"] for r in result["hits"][:total]]
+
+        return ids
+
+    @classmethod
+    async def _get_object_ids(
+        cls, query_data: str, allowed_langs: list[str]
+    ) -> list[int]:
+        params = cls.get_raw_params()
+
+        allowed_langs_filter = cls.get_allowed_langs_filter(allowed_langs)
+
+        return await asyncio.get_event_loop().run_in_executor(
+            cls._executor,
+            cls.make_request,
+            query_data,
+            allowed_langs_filter,
+            params.offset,
+        )
 
 
 class GetRandomService(Generic[T]):

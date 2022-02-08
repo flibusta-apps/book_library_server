@@ -17,6 +17,9 @@ class EnvConfig(BaseSettings):
     REDIS_DB: int
     REDIS_PASSWORD: Optional[str]
 
+    MEILI_HOST: str
+    MEILI_MASTER_KEY: str
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

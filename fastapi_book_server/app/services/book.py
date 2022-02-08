@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from app.models import Author as AuthorDB
 from app.models import Book as BookDB
 from app.serializers.book import CreateBook, CreateRemoteBook
-from app.services.common import TRGMSearchService, GetRandomService
+from app.services.common import TRGMSearchService, MeiliSearchService, GetRandomService
 
 
 GET_OBJECT_IDS_QUERY = """
@@ -91,3 +91,12 @@ ORDER BY RANDOM() LIMIT 1;
 class GetRandomBookService(GetRandomService):
     MODEL_CLASS = BookDB
     GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY
+
+
+class BookMeiliSearchService(MeiliSearchService):
+    MODEL_CLASS = BookDB
+    SELECT_RELATED = ["source"]
+    PREFETCH_RELATED = ["authors", "translators", "annotations"]
+
+    MS_INDEX_NAME = "books"
+    MS_INDEX_LANG_KEY = "lang"

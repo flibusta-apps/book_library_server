@@ -8,7 +8,7 @@ from app.models import Book as BookDB
 from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
 from app.serializers.sequence import Sequence, CreateSequence
-from app.services.sequence import SequenceTGRMSearchService, GetRandomSequenceService
+from app.services.sequence import SequenceMeiliSearchService, GetRandomSequenceService
 from app.utils.pagination import CustomPage
 
 
@@ -67,6 +67,6 @@ async def create_sequence(data: CreateSequence):
 async def search_sequences(
     query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
-    return await SequenceTGRMSearchService.get(
+    return await SequenceMeiliSearchService.get(
         query, request.app.state.redis, allowed_langs
     )

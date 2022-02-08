@@ -1,5 +1,5 @@
 from app.models import Sequence
-from app.services.common import TRGMSearchService, GetRandomService
+from app.services.common import TRGMSearchService, MeiliSearchService, GetRandomService
 
 
 GET_OBJECT_IDS_QUERY = """
@@ -56,3 +56,11 @@ ORDER BY RANDOM() LIMIT 1;
 class GetRandomSequenceService(GetRandomService):
     MODEL_CLASS = Sequence
     GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY
+
+
+class SequenceMeiliSearchService(MeiliSearchService):
+    MODEL_CLASS = Sequence
+    SELECT_RELATED = ["source"]
+
+    MS_INDEX_NAME = "sequences"
+    MS_INDEX_LANG_KEY = "langs"
