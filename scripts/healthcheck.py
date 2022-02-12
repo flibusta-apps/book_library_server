@@ -4,7 +4,7 @@ import httpx
 
 
 response = httpx.get(
-    "http://localhost:8080/api/v1/healthcheck",
+    "http://localhost:8080/healthcheck",
     headers={"Authorization": os.environ["API_KEY"]},
 )
 print(f"HEALTHCHECK STATUS: {response.status_code}")
