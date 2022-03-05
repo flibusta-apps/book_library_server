@@ -44,16 +44,16 @@ SELECT ARRAY(
 class TranslatorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
     CUSTOM_CACHE_PREFIX = "translator"
-    SELECT_RELATED = ["source"]
-    PREFETCH_RELATED = ["annotations"]
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
 class TranslatorMeiliSearchService(MeiliSearchService):
     MODEL_CLASS = Author
     CUSTOM_CACHE_PREFIX = "translator"
-    SELECT_RELATED = ["source"]
-    PREFETCH_RELATED = ["annotations"]
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["annotations"]
 
     MS_INDEX_NAME = "authors"
     MS_INDEX_LANG_KEY = "translator_langs"

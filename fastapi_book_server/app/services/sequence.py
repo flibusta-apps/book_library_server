@@ -32,7 +32,7 @@ SELECT ARRAY (
 
 class SequenceTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Sequence
-    SELECT_RELATED = ["source"]
+    PREFETCH_RELATED = ["source"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
@@ -60,7 +60,7 @@ class GetRandomSequenceService(GetRandomService):
 
 class SequenceMeiliSearchService(MeiliSearchService):
     MODEL_CLASS = Sequence
-    SELECT_RELATED = ["source"]
+    PREFETCH_RELATED = ["source"]
 
     MS_INDEX_NAME = "sequences"
     MS_INDEX_LANG_KEY = "langs"

@@ -24,8 +24,8 @@ SELECT ARRAY(
 
 class BookTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = BookDB
-    SELECT_RELATED = ["source"]
-    PREFETCH_RELATED = ["authors", "translators", "annotations"]
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["authors", "translators", "annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
@@ -95,8 +95,8 @@ class GetRandomBookService(GetRandomService):
 
 class BookMeiliSearchService(MeiliSearchService):
     MODEL_CLASS = BookDB
-    SELECT_RELATED = ["source"]
-    PREFETCH_RELATED = ["authors", "translators", "annotations"]
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["authors", "translators", "annotations"]
 
     MS_INDEX_NAME = "books"
     MS_INDEX_LANG_KEY = "lang"

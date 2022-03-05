@@ -47,8 +47,8 @@ async def get_sequence_books(
     id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
     return await paginate(
-        BookDB.objects.select_related(["source"])
-        .prefetch_related(["annotations", "authors", "translators"])
+        BookDB.objects.prefetch_related(["source"])
+        .select_related(["annotations", "authors", "translators"])
         .filter(sequences__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("sequences__booksequences__position")
     )

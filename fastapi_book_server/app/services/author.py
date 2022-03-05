@@ -43,8 +43,8 @@ SELECT ARRAY(
 
 class AuthorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
-    SELECT_RELATED = ["source"]
-    PREFETCH_RELATED = ["annotations"]
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
@@ -70,8 +70,8 @@ class GetRandomAuthorService(GetRandomService):
 
 class AuthorMeiliSearchService(MeiliSearchService):
     MODEL_CLASS = Author
-    SELECT_RELATED = ["source"]
-    PREFETCH_RELATED = ["annotations"]
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["annotations"]
 
     MS_INDEX_NAME = "authors"
     MS_INDEX_LANG_KEY = "author_langs"

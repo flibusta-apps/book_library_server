@@ -27,8 +27,8 @@ author_router = APIRouter(
 )
 
 
-SELECT_RELATED_FIELDS = ["source"]
-PREFETCH_RELATED_FIELDS = ["annotations"]
+PREFETCH_RELATED_FIELDS = ["source"]
+SELECT_RELATED_FIELDS = ["annotations"]
 
 
 @author_router.get(
@@ -107,8 +107,8 @@ async def get_author_books(
     id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
     return await paginate(
-        BookDB.objects.select_related(["source"])
-        .prefetch_related(["annotations", "translators"])
+        BookDB.objects.prefetch_related(["source"])
+        .select_related(["annotations", "translators"])
         .filter(authors__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("title")
     )
@@ -137,8 +137,8 @@ async def get_translated_books(
     id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
     return await paginate(
-        BookDB.objects.select_related(["source"])
-        .prefetch_related(["annotations", "authors"])
+        BookDB.objects.prefetch_related(["source"])
+        .select_related(["annotations", "authors"])
         .filter(
             translators__id=id,
             lang__in=allowed_langs,

@@ -29,8 +29,8 @@ book_router = APIRouter(
     dependencies=[Depends(check_token)],
 )
 
-SELECT_RELATED_FIELDS = ["source"]
-PREFETCH_RELATED_FIELDS = ["authors", "translators", "annotations"]
+PREFETCH_RELATED_FIELDS = ["source"]
+SELECT_RELATED_FIELDS = ["authors", "translators", "annotations"]
 
 
 @book_router.get(
@@ -59,17 +59,19 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
 async def get_random_book(allowed_langs: list[str] = Depends(get_allowed_langs)):
     book_id = await GetRandomBookService.get_random_id(allowed_langs)
 
-    return (
-        await BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+    book = (
+        await BookDB.objects.select_related(SELECT_RELATED_FIELDS + ["sequences"])
         .prefetch_related(PREFETCH_RELATED_FIELDS)
         .get(id=book_id)
     )
+
+    return book
 
 
 @book_router.get("/{id}", response_model=BookDetail)
 async def get_book(id: int):
     book = (
-        await BookDB.objects.select_related(SELECT_RELATED_FIELDS)
+        await BookDB.objects.select_related(SELECT_RELATED_FIELDS + ["sequences"])
         .prefetch_related(PREFETCH_RELATED_FIELDS)
         .get_or_none(id=id)
     )
