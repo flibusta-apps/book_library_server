@@ -54,7 +54,7 @@ async def create_author(data: CreateAuthor):
 
 
 @author_router.get("/random", response_model=Author)
-async def get_random_author(allowed_langs: list[str] = Depends(get_allowed_langs)):
+async def get_random_author(allowed_langs: frozenset[str] = Depends(get_allowed_langs)):
     author_id = await GetRandomAuthorService.get_random_id(allowed_langs)
 
     return (
@@ -118,10 +118,12 @@ async def get_author_books(
     "/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)]
 )
 async def search_authors(
-    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+    query: str,
+    request: Request,
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     return await AuthorMeiliSearchService.get(
-        query, request.app.state.redis, allowed_langs
+        {"query": query, "allowed_langs": allowed_langs}, request.app.state.redis
     )
 
 
@@ -151,8 +153,10 @@ async def get_translated_books(
     "/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)]
 )
 async def search_translators(
-    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+    query: str,
+    request: Request,
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     return await TranslatorMeiliSearchService.get(
-        query, request.app.state.redis, allowed_langs
+        {"query": query, "allowed_langs": allowed_langs}, request.app.state.redis
     )

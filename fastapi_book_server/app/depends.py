@@ -13,8 +13,10 @@ def check_token(api_key: str = Security(default_security)):
         )
 
 
-def get_allowed_langs(allowed_langs: Optional[list[str]] = Query(None)) -> list[str]:
+def get_allowed_langs(
+    allowed_langs: Optional[list[str]] = Query(None),
+) -> frozenset[str]:
     if allowed_langs is not None:
-        return allowed_langs
+        return frozenset(allowed_langs)
 
-    return ["ru", "be", "uk"]
+    return frozenset(("ru", "be", "uk"))

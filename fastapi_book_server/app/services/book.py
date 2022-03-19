@@ -5,7 +5,12 @@ from fastapi import HTTPException, status
 from app.models import Author as AuthorDB
 from app.models import Book as BookDB
 from app.serializers.book import CreateBook, CreateRemoteBook
-from app.services.common import TRGMSearchService, MeiliSearchService, GetRandomService
+from app.services.common import (
+    TRGMSearchService,
+    MeiliSearchService,
+    GetRandomService,
+    BaseFilterService,
+)
 
 
 GET_OBJECT_IDS_QUERY = """
@@ -27,6 +32,12 @@ class BookTGRMSearchService(TRGMSearchService):
     PREFETCH_RELATED = ["source"]
     SELECT_RELATED = ["authors", "translators", "annotations"]
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
+
+
+class BookFilterService(BaseFilterService):
+    MODEL_CLASS = BookDB
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["authors", "translators", "annotations"]
 
 
 class BookCreator:

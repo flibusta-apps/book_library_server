@@ -27,7 +27,9 @@ async def get_sequences():
 
 
 @sequence_router.get("/random", response_model=Sequence)
-async def get_random_sequence(allowed_langs: list[str] = Depends(get_allowed_langs)):
+async def get_random_sequence(
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+):
     sequence_id = await GetRandomSequenceService.get_random_id(allowed_langs)
 
     return await SequenceDB.objects.get(id=sequence_id)
@@ -65,8 +67,10 @@ async def create_sequence(data: CreateSequence):
     dependencies=[Depends(Params)],
 )
 async def search_sequences(
-    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+    query: str,
+    request: Request,
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     return await SequenceMeiliSearchService.get(
-        query, request.app.state.redis, allowed_langs
+        {"query": query, "allowed_langs": allowed_langs}, request.app.state.redis
     )

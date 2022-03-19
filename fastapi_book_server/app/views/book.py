@@ -3,7 +3,6 @@ from typing import Union
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
-from fastapi_pagination.ext.ormar import paginate
 
 from app.depends import check_token, get_allowed_langs
 from app.filters.book import get_book_filter
@@ -19,7 +18,12 @@ from app.serializers.book import (
     CreateRemoteBook,
 )
 from app.serializers.book_annotation import BookAnnotation
-from app.services.book import BookMeiliSearchService, GetRandomBookService, BookCreator
+from app.services.book import (
+    BookMeiliSearchService,
+    BookFilterService,
+    GetRandomBookService,
+    BookCreator,
+)
 from app.utils.pagination import CustomPage
 
 
@@ -36,12 +40,8 @@ SELECT_RELATED_FIELDS = ["authors", "translators", "annotations"]
 @book_router.get(
     "/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)]
 )
-async def get_books(book_filter: dict = Depends(get_book_filter)):
-    return await paginate(
-        BookDB.objects.select_related(SELECT_RELATED_FIELDS)
-        .prefetch_related(PREFETCH_RELATED_FIELDS)
-        .filter(**book_filter)
-    )
+async def get_books(request: Request, book_filter: dict = Depends(get_book_filter)):
+    return await BookFilterService.get(book_filter, request.app.state.redis)
 
 
 @book_router.post("/", response_model=Book)
@@ -56,7 +56,7 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
 
 
 @book_router.get("/random", response_model=BookDetail)
-async def get_random_book(allowed_langs: list[str] = Depends(get_allowed_langs)):
+async def get_random_book(allowed_langs: frozenset[str] = Depends(get_allowed_langs)):
     book_id = await GetRandomBookService.get_random_id(allowed_langs)
 
     book = (
@@ -137,8 +137,10 @@ async def get_book_annotation(id: int):
     "/search/{query}", response_model=CustomPage[Book], dependencies=[Depends(Params)]
 )
 async def search_books(
-    query: str, request: Request, allowed_langs: list[str] = Depends(get_allowed_langs)
+    query: str,
+    request: Request,
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     return await BookMeiliSearchService.get(
-        query, request.app.state.redis, allowed_langs
+        {"query": query, "allowed_langs": allowed_langs}, request.app.state.redis
     )
