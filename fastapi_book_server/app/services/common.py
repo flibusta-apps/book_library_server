@@ -125,7 +125,10 @@ class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
         if cls.SELECT_RELATED:
             queryset = queryset.select_related(cls.SELECT_RELATED)
 
-        return len(object_ids), await queryset.filter(id__in=limited_object_ids).all()
+        db_objects = await queryset.filter(id__in=limited_object_ids).all()
+        return len(object_ids), sorted(
+            db_objects, key=lambda o: limited_object_ids.index(o.id)
+        )
 
     @classmethod
     async def get(cls, query: QUERY, redis: aioredis.Redis) -> Page[MODEL]:
