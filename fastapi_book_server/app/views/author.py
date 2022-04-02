@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
@@ -56,11 +56,10 @@ async def create_author(data: CreateAuthor):
 @author_router.get("/random", response_model=Author)
 async def get_random_author(
     request: Request,
-    background_tasks: BackgroundTasks,
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     author_id = await GetRandomAuthorService.get_random_id(
-        allowed_langs, request.app.state.redis, background_tasks
+        allowed_langs, request.app.state.redis
     )
 
     return (
@@ -129,7 +128,8 @@ async def search_authors(
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     return await AuthorMeiliSearchService.get(
-        {"query": query, "allowed_langs": allowed_langs}, request.app.state.redis
+        {"query": query, "allowed_langs": allowed_langs},
+        request.app.state.redis,
     )
 
 
@@ -164,5 +164,6 @@ async def search_translators(
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     return await TranslatorMeiliSearchService.get(
-        {"query": query, "allowed_langs": allowed_langs}, request.app.state.redis
+        {"query": query, "allowed_langs": allowed_langs},
+        request.app.state.redis,
     )

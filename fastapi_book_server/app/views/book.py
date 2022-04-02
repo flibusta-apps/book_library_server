@@ -1,6 +1,6 @@
 from typing import Union
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, HTTPException, status
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
 
@@ -40,7 +40,10 @@ SELECT_RELATED_FIELDS = ["authors", "translators", "annotations"]
 @book_router.get(
     "/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)]
 )
-async def get_books(request: Request, book_filter: dict = Depends(get_book_filter)):
+async def get_books(
+    request: Request,
+    book_filter: dict = Depends(get_book_filter),
+):
     return await BookFilterService.get(book_filter, request.app.state.redis)
 
 
@@ -58,11 +61,10 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
 @book_router.get("/random", response_model=BookDetail)
 async def get_random_book(
     request: Request,
-    background_tasks: BackgroundTasks,
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     book_id = await GetRandomBookService.get_random_id(
-        allowed_langs, request.app.state.redis, background_tasks
+        allowed_langs, request.app.state.redis
     )
 
     book = (
@@ -148,5 +150,6 @@ async def search_books(
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     return await BookMeiliSearchService.get(
-        {"query": query, "allowed_langs": allowed_langs}, request.app.state.redis
+        {"query": query, "allowed_langs": allowed_langs},
+        request.app.state.redis,
     )
