@@ -54,8 +54,12 @@ async def create_author(data: CreateAuthor):
 
 
 @author_router.get("/random", response_model=Author)
-async def get_random_author(allowed_langs: frozenset[str] = Depends(get_allowed_langs)):
-    author_id = await GetRandomAuthorService.get_random_id(allowed_langs)
+async def get_random_author(
+    request: Request, allowed_langs: frozenset[str] = Depends(get_allowed_langs)
+):
+    author_id = await GetRandomAuthorService.get_random_id(
+        allowed_langs, request.app.state.redis
+    )
 
     return (
         await AuthorDB.objects.select_related(SELECT_RELATED_FIELDS)

@@ -100,7 +100,7 @@ SELECT id FROM filtered_books;
 
 class GetRandomBookService(GetRandomService):
     MODEL_CLASS = BookDB
-    GET_OBJECT_ID_QUERY = GET_OBJECT_IDS_QUERY
+    GET_OBJECTS_ID_QUERY = GET_OBJECTS_ID_QUERY
 
 
 class BookMeiliSearchService(MeiliSearchService):

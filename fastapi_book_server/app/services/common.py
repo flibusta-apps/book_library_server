@@ -26,7 +26,7 @@ class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
     SELECT_RELATED: Optional[Union[list[str], str]] = None
     PREFETCH_RELATED: Optional[Union[list[str], str]] = None
     CUSTOM_CACHE_PREFIX: Optional[str] = None
-    CACHE_TTL = 60 * 60
+    CACHE_TTL = 6 * 60 * 60
 
     @classmethod
     def get_params(cls) -> AbstractParams:
@@ -237,6 +237,8 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
 class GetRandomService(Generic[MODEL]):
     MODEL_CLASS: Optional[MODEL] = None
     GET_OBJECTS_ID_QUERY: Optional[str] = None
+    CUSTOM_CACHE_PREFIX: Optional[str] = None
+    CACHE_TTL = 6 * 60 * 60
 
     @classmethod
     @property
@@ -251,6 +253,21 @@ class GetRandomService(Generic[MODEL]):
 
     @classmethod
     @property
+    def cache_prefix(cls) -> str:
+        return cls.CUSTOM_CACHE_PREFIX or cls.model.Meta.tablename
+
+    @staticmethod
+    def _get_query_hash(query: frozenset[str]):
+        return hash(query)
+
+    @classmethod
+    def get_cache_key(cls, query: frozenset[str]) -> str:
+        model_class_name = cls.cache_prefix
+        query_hash = cls._get_query_hash(query)
+        return f"random_{model_class_name}_{query_hash}"
+
+    @classmethod
+    @property
     def objects_id_query(cls) -> str:
         assert (
             cls.GET_OBJECTS_ID_QUERY is not None
@@ -258,15 +275,59 @@ class GetRandomService(Generic[MODEL]):
         return cls.GET_OBJECTS_ID_QUERY
 
     @classmethod
-    async def get_objects(cls, allowed_langs: frozenset[str]) -> list[int]:
+    async def _get_objects_from_db(cls, allowed_langs: frozenset[str]) -> list[int]:
         objects = await cls.database.fetch_all(
             cls.objects_id_query, {"langs": allowed_langs}
         )
         return [obj["id"] for obj in objects]
 
     @classmethod
-    async def get_random_id(cls, allowed_langs: frozenset[str]) -> int:
-        object_ids = await cls.get_objects(allowed_langs)
+    async def _get_objects_from_cache(
+        cls, allowed_langs: frozenset[str], redis: aioredis.Redis
+    ) -> Optional[list[int]]:
+        try:
+            key = cls.get_cache_key(allowed_langs)
+            data = await redis.get(key)
+
+            if data is None:
+                return None
+
+            return orjson.loads(data)
+        except aioredis.RedisError as e:
+            print(e)
+            return None
+
+    @classmethod
+    async def _cache_object_ids(
+        cls, object_ids: list[int], allowed_langs: frozenset[str], redis: aioredis.Redis
+    ) -> bool:
+        try:
+            key = cls.get_cache_key(allowed_langs)
+            await redis.set(key, orjson.dumps(object_ids), ex=cls.CACHE_TTL)
+            return True
+        except aioredis.RedisError as e:
+            print(e)
+            return False
+
+    @classmethod
+    async def get_objects(
+        cls, allowed_langs: frozenset[str], redis: aioredis.Redis
+    ) -> list[int]:
+        cached_object_ids = await cls._get_objects_from_cache(allowed_langs, redis)
+
+        if cached_object_ids is not None:
+            return cached_object_ids
+
+        object_ids = await cls._get_objects_from_db(allowed_langs)
+        await cls._cache_object_ids(object_ids, allowed_langs, redis)
+
+        return object_ids
+
+    @classmethod
+    async def get_random_id(
+        cls, allowed_langs: frozenset[str], redis: aioredis.Redis
+    ) -> int:
+        object_ids = await cls.get_objects(allowed_langs, redis)
         return choice(object_ids)
 
 

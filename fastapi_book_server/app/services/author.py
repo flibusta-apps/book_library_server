@@ -48,7 +48,7 @@ class AuthorTGRMSearchService(TRGMSearchService):
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
-GET_OBJECT_ID_QUERY = """
+GET_OBJECTS_ID_QUERY = """
 WITH filtered_authors AS (
     SELECT id FROM authors
     WHERE EXISTS (
@@ -64,7 +64,7 @@ SELECT id FROM filtered_authors;
 
 class GetRandomAuthorService(GetRandomService):
     MODEL_CLASS = Author
-    GET_OBJECT_ID_QUERY = GET_OBJECT_ID_QUERY
+    GET_OBJECTS_ID_QUERY = GET_OBJECTS_ID_QUERY
 
 
 class AuthorMeiliSearchService(MeiliSearchService):

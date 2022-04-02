@@ -56,8 +56,12 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
 
 
 @book_router.get("/random", response_model=BookDetail)
-async def get_random_book(allowed_langs: frozenset[str] = Depends(get_allowed_langs)):
-    book_id = await GetRandomBookService.get_random_id(allowed_langs)
+async def get_random_book(
+    request: Request, allowed_langs: frozenset[str] = Depends(get_allowed_langs)
+):
+    book_id = await GetRandomBookService.get_random_id(
+        allowed_langs, request.app.state.redis
+    )
 
     book = (
         await BookDB.objects.select_related(SELECT_RELATED_FIELDS + ["sequences"])

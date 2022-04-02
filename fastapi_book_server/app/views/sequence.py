@@ -28,9 +28,12 @@ async def get_sequences():
 
 @sequence_router.get("/random", response_model=Sequence)
 async def get_random_sequence(
+    request: Request,
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
-    sequence_id = await GetRandomSequenceService.get_random_id(allowed_langs)
+    sequence_id = await GetRandomSequenceService.get_random_id(
+        allowed_langs, request.app.state.redis
+    )
 
     return await SequenceDB.objects.get(id=sequence_id)
 
