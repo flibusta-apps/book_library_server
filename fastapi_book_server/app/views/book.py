@@ -1,6 +1,6 @@
 from typing import Union
 
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
 
@@ -57,10 +57,12 @@ async def create_book(data: Union[CreateBook, CreateRemoteBook]):
 
 @book_router.get("/random", response_model=BookDetail)
 async def get_random_book(
-    request: Request, allowed_langs: frozenset[str] = Depends(get_allowed_langs)
+    request: Request,
+    background_tasks: BackgroundTasks,
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     book_id = await GetRandomBookService.get_random_id(
-        allowed_langs, request.app.state.redis
+        allowed_langs, request.app.state.redis, background_tasks
     )
 
     book = (

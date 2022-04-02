@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
@@ -29,10 +29,13 @@ async def get_sequences():
 @sequence_router.get("/random", response_model=Sequence)
 async def get_random_sequence(
     request: Request,
+    background_tasks: BackgroundTasks,
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     sequence_id = await GetRandomSequenceService.get_random_id(
-        allowed_langs, request.app.state.redis
+        allowed_langs,
+        request.app.state.redis,
+        background_tasks,
     )
 
     return await SequenceDB.objects.get(id=sequence_id)

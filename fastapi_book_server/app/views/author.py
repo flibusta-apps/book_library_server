@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
@@ -55,10 +55,12 @@ async def create_author(data: CreateAuthor):
 
 @author_router.get("/random", response_model=Author)
 async def get_random_author(
-    request: Request, allowed_langs: frozenset[str] = Depends(get_allowed_langs)
+    request: Request,
+    background_tasks: BackgroundTasks,
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     author_id = await GetRandomAuthorService.get_random_id(
-        allowed_langs, request.app.state.redis
+        allowed_langs, request.app.state.redis, background_tasks
     )
 
     return (

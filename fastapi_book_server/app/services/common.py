@@ -4,6 +4,8 @@ from concurrent.futures import ThreadPoolExecutor
 from random import choice
 from typing import Optional, Generic, TypeVar, TypedDict, Union
 
+from fastapi import BackgroundTasks
+
 import aioredis
 from databases import Database
 from fastapi_pagination.api import resolve_params
@@ -282,17 +284,19 @@ class GetRandomService(Generic[MODEL]):
         return [obj["id"] for obj in objects]
 
     @classmethod
-    async def _get_objects_from_cache(
+    async def _get_random_object_from_cache(
         cls, allowed_langs: frozenset[str], redis: aioredis.Redis
-    ) -> Optional[list[int]]:
+    ) -> Optional[int]:
         try:
             key = cls.get_cache_key(allowed_langs)
-            data = await redis.get(key)
+            active_key = f"{key}_active"
 
-            if data is None:
+            if not await redis.exists(active_key):
                 return None
 
-            return orjson.loads(data)
+            data: bytes = await redis.srandmember(key)
+
+            return int(data.decode())
         except aioredis.RedisError as e:
             print(e)
             return None
@@ -303,31 +307,32 @@ class GetRandomService(Generic[MODEL]):
     ) -> bool:
         try:
             key = cls.get_cache_key(allowed_langs)
-            await redis.set(key, orjson.dumps(object_ids), ex=cls.CACHE_TTL)
+            active_key = f"{key}_active"
+
+            await redis.set(active_key, 1, ex=cls.CACHE_TTL)
+            await redis.delete(key)
+            await redis.sadd(key, *object_ids)
             return True
         except aioredis.RedisError as e:
             print(e)
             return False
 
     @classmethod
-    async def get_objects(
-        cls, allowed_langs: frozenset[str], redis: aioredis.Redis
-    ) -> list[int]:
-        cached_object_ids = await cls._get_objects_from_cache(allowed_langs, redis)
+    async def get_random_id(
+        cls,
+        allowed_langs: frozenset[str],
+        redis: aioredis.Redis,
+        background_tasks: BackgroundTasks,
+    ) -> int:
+        cached_object_id = await cls._get_random_object_from_cache(allowed_langs, redis)
 
-        if cached_object_ids is not None:
-            return cached_object_ids
+        if cached_object_id is not None:
+            return cached_object_id
 
         object_ids = await cls._get_objects_from_db(allowed_langs)
-        await cls._cache_object_ids(object_ids, allowed_langs, redis)
 
-        return object_ids
+        background_tasks.add_task(cls._cache_object_ids, allowed_langs, redis)
 
-    @classmethod
-    async def get_random_id(
-        cls, allowed_langs: frozenset[str], redis: aioredis.Redis
-    ) -> int:
-        object_ids = await cls.get_objects(allowed_langs, redis)
         return choice(object_ids)
 
 
