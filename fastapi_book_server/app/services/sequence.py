@@ -36,7 +36,7 @@ class SequenceTGRMSearchService(TRGMSearchService):
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
-GET_RANDOM_OBJECT_ID_QUERY = """
+GET_OBJECT_ID_QUERY = """
 WITH filtered_sequences AS (
     SELECT id FROM sequences
     WHERE EXISTS (
@@ -55,7 +55,7 @@ ORDER BY RANDOM() LIMIT 1;
 
 class GetRandomSequenceService(GetRandomService):
     MODEL_CLASS = Sequence
-    GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY
+    GET_OBJECT_ID_QUERY = GET_OBJECT_ID_QUERY
 
 
 class SequenceMeiliSearchService(MeiliSearchService):

@@ -48,7 +48,7 @@ class AuthorTGRMSearchService(TRGMSearchService):
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
-GET_RANDOM_OBJECT_ID_QUERY = """
+GET_OBJECT_ID_QUERY = """
 WITH filtered_authors AS (
     SELECT id FROM authors
     WHERE EXISTS (
@@ -58,14 +58,13 @@ WITH filtered_authors AS (
             AND books.lang = ANY(:langs ::text[])
     )
 )
-SELECT id FROM filtered_authors
-ORDER BY RANDOM() LIMIT 1;
+SELECT id FROM filtered_authors;
 """
 
 
 class GetRandomAuthorService(GetRandomService):
     MODEL_CLASS = Author
-    GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY
+    GET_OBJECT_ID_QUERY = GET_OBJECT_ID_QUERY
 
 
 class AuthorMeiliSearchService(MeiliSearchService):

@@ -89,19 +89,18 @@ class BookCreator:
             return await cls._create_remote_book(data)
 
 
-GET_RANDOM_OBJECT_ID_QUERY = """
+GET_OBJECTS_ID_QUERY = """
 WITH filtered_books AS (
     SELECT id FROM books
     WHERE books.is_deleted = 'f' AND books.lang = ANY(:langs ::text[])
 )
-SELECT id FROM filtered_books
-ORDER BY RANDOM() LIMIT 1;
+SELECT id FROM filtered_books;
 """
 
 
 class GetRandomBookService(GetRandomService):
     MODEL_CLASS = BookDB
-    GET_RANDOM_OBJECT_ID_QUERY = GET_RANDOM_OBJECT_ID_QUERY
+    GET_OBJECT_ID_QUERY = GET_OBJECT_IDS_QUERY
 
 
 class BookMeiliSearchService(MeiliSearchService):

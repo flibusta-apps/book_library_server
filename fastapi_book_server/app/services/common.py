@@ -1,6 +1,7 @@
 import abc
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from random import choice
 from typing import Optional, Generic, TypeVar, TypedDict, Union
 
 import aioredis
@@ -102,11 +103,7 @@ class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
             print(e)
 
     @classmethod
-    async def get_objects(
-        cls, query: QUERY, redis: aioredis.Redis
-    ) -> tuple[int, list[MODEL]]:
-        params = cls.get_raw_params()
-
+    async def _get_objects(cls, query: QUERY, redis: aioredis.Redis) -> list[int]:
         cached_object_ids = await cls.get_cached_ids(query, redis)
 
         if cached_object_ids is None:
@@ -114,6 +111,16 @@ class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
             await cls.cache_object_ids(query, object_ids, redis)
         else:
             object_ids = cached_object_ids
+
+        return object_ids
+
+    @classmethod
+    async def get_limited_objects(
+        cls, query: QUERY, redis: aioredis.Redis
+    ) -> tuple[int, list[MODEL]]:
+        object_ids = await cls._get_objects(query, redis)
+
+        params = cls.get_raw_params()
 
         limited_object_ids = object_ids[params.offset : params.offset + params.limit]
 
@@ -134,7 +141,7 @@ class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
     async def get(cls, query: QUERY, redis: aioredis.Redis) -> Page[MODEL]:
         params = cls.get_params()
 
-        total, objects = await cls.get_objects(query, redis)
+        total, objects = await cls.get_limited_objects(query, redis)
 
         return CustomPage.create(items=objects, total=total, params=params)
 
@@ -229,7 +236,7 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
 
 class GetRandomService(Generic[MODEL]):
     MODEL_CLASS: Optional[MODEL] = None
-    GET_RANDOM_OBJECT_ID_QUERY: Optional[str] = None
+    GET_OBJECTS_ID_QUERY: Optional[str] = None
 
     @classmethod
     @property
@@ -244,17 +251,23 @@ class GetRandomService(Generic[MODEL]):
 
     @classmethod
     @property
-    def random_object_id_query(cls) -> str:
+    def objects_id_query(cls) -> str:
         assert (
-            cls.GET_RANDOM_OBJECT_ID_QUERY is not None
+            cls.GET_OBJECTS_ID_QUERY is not None
         ), f"GET_OBJECT_IDS_QUERY in {cls.__name__} don't set!"
-        return cls.GET_RANDOM_OBJECT_ID_QUERY
+        return cls.GET_OBJECTS_ID_QUERY
+
+    @classmethod
+    async def get_objects(cls, allowed_langs: frozenset[str]) -> list[int]:
+        objects = await cls.database.fetch_all(
+            cls.objects_id_query, {"langs": allowed_langs}
+        )
+        return [obj["id"] for obj in objects]
 
     @classmethod
     async def get_random_id(cls, allowed_langs: frozenset[str]) -> int:
-        return await cls.database.fetch_val(
-            cls.random_object_id_query, {"langs": allowed_langs}
-        )
+        object_ids = await cls.get_objects(allowed_langs)
+        return choice(object_ids)
 
 
 class BaseFilterService(Generic[MODEL, QUERY], BaseSearchService[MODEL, QUERY]):
