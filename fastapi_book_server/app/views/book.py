@@ -36,6 +36,8 @@ book_router = APIRouter(
 PREFETCH_RELATED_FIELDS = ["source"]
 SELECT_RELATED_FIELDS = ["authors", "translators", "annotations"]
 
+DETAIL_SELECT_RELATED_FIELDS = ["sequences", "genres"]
+
 
 @book_router.get(
     "/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)]
@@ -68,7 +70,9 @@ async def get_random_book(
     )
 
     book = (
-        await BookDB.objects.select_related(SELECT_RELATED_FIELDS + ["sequences"])
+        await BookDB.objects.select_related(
+            SELECT_RELATED_FIELDS + DETAIL_SELECT_RELATED_FIELDS
+        )
         .prefetch_related(PREFETCH_RELATED_FIELDS)
         .get(id=book_id)
     )
@@ -79,7 +83,9 @@ async def get_random_book(
 @book_router.get("/{id}", response_model=BookDetail)
 async def get_book(id: int):
     book = (
-        await BookDB.objects.select_related(SELECT_RELATED_FIELDS + ["sequences"])
+        await BookDB.objects.select_related(
+            SELECT_RELATED_FIELDS + DETAIL_SELECT_RELATED_FIELDS
+        )
         .prefetch_related(PREFETCH_RELATED_FIELDS)
         .get_or_none(id=id)
     )

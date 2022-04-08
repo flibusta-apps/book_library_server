@@ -3,13 +3,18 @@ from datetime import date
 from pydantic import BaseModel
 
 from app.serializers.author import Author
-from app.serializers.sequence import Sequence
 from app.serializers.orjson_config import ORJSONConfig
+from app.serializers.sequence import Sequence
 
 
 class BookSource(BaseModel):
     id: int
     name: str
+
+
+class BookGenre(BaseModel):
+    id: int
+    description: str
 
 
 class Book(BaseModel):
@@ -34,6 +39,7 @@ class RemoteBook(Book):
 
 class BookDetail(RemoteBook):
     sequences: list[Sequence]
+    genres: list[BookGenre]
     is_deleted: bool
 
 
