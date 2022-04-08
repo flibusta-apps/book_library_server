@@ -16,7 +16,6 @@ class Source(ormar.Model):
         tablename = "sources"
 
     id: int = ormar.SmallInteger(primary_key=True, nullable=False)  # type: ignore
-
     name: str = ormar.String(max_length=32, nullable=False, unique=True)  # type: ignore
 
 

@@ -7,7 +7,7 @@ RUN apt-get update \
 WORKDIR /root/poetry
 COPY pyproject.toml poetry.lock /root/poetry/
 
-RUN pip install poetry --no-cache-dir \
+RUN pip install poetry wheel --no-cache-dir \
     && poetry export --without-hashes > requirements.txt
 
 ENV VENV_PATH=/opt/venv
