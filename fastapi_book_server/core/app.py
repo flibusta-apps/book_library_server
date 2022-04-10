@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 
 import aioredis
 from fastapi_pagination import add_pagination
@@ -10,7 +11,7 @@ from core.db import database
 
 
 def start_app() -> FastAPI:
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
 
     app.state.database = database
 

@@ -7,7 +7,7 @@ from app.depends import check_token, get_allowed_langs
 from app.models import Book as BookDB
 from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
-from app.serializers.sequence import Sequence, CreateSequence
+from app.serializers.sequence import Sequence
 from app.services.sequence import SequenceMeiliSearchService, GetRandomSequenceService
 from app.utils.pagination import CustomPage
 
@@ -58,11 +58,6 @@ async def get_sequence_books(
         .filter(sequences__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("sequences__booksequences__position")
     )
-
-
-@sequence_router.post("/", response_model=Sequence)
-async def create_sequence(data: CreateSequence):
-    return await SequenceDB.objects.create(**data.dict())
 
 
 @sequence_router.get(

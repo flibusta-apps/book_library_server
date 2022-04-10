@@ -7,13 +7,7 @@ from app.depends import check_token, get_allowed_langs
 from app.models import Author as AuthorDB
 from app.models import AuthorAnnotation as AuthorAnnotationDB
 from app.models import Book as BookDB
-from app.serializers.author import (
-    Author,
-    CreateAuthor,
-    UpdateAuthor,
-    AuthorBook,
-    TranslatedBook,
-)
+from app.serializers.author import Author, AuthorBook, TranslatedBook
 from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorMeiliSearchService, GetRandomAuthorService
 from app.services.translator import TranslatorMeiliSearchService
@@ -39,17 +33,6 @@ async def get_authors():
         AuthorDB.objects.select_related(SELECT_RELATED_FIELDS).prefetch_related(
             PREFETCH_RELATED_FIELDS
         )
-    )
-
-
-@author_router.post("/", response_model=Author, dependencies=[Depends(Params)])
-async def create_author(data: CreateAuthor):
-    author = await AuthorDB.objects.create(**data.dict())
-
-    return (
-        await AuthorDB.objects.select_related(SELECT_RELATED_FIELDS)
-        .prefetch_related(PREFETCH_RELATED_FIELDS)
-        .get(id=author.id)
     )
 
 
@@ -81,18 +64,6 @@ async def get_author(id: int):
         raise HTTPException(status.HTTP_404_NOT_FOUND)
 
     return author
-
-
-@author_router.put("/{id}", response_model=Author)
-async def update_author(id: int, data: UpdateAuthor):
-    author = await AuthorDB.objects.get_or_none(id=id)
-
-    if author is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
-
-    author.update_from_dict(data.dict())
-
-    return await author.save()
 
 
 @author_router.get("/{id}/annotation", response_model=AuthorAnnotation)
