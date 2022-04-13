@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 
-from fastapi_pagination import Params, Page
+from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
-from app.depends import check_token
+from app.depends import check_token, get_allowed_langs
 from app.models import Genre as GenreDB
 from app.serializers.genre import Genre
+from app.services.genre import GenreMeiliSearchService
+from app.utils.pagination import CustomPage
 
 
 genre_router = APIRouter(
@@ -16,7 +18,7 @@ genre_router = APIRouter(
 PREFETCH_RELATED_FIELDS = ["source"]
 
 
-@genre_router.get("/", response_model=Page[Genre], dependencies=[Depends(Params)])
+@genre_router.get("/", response_model=CustomPage[Genre], dependencies=[Depends(Params)])
 async def get_genres():
     return await paginate(GenreDB.objects.prefetch_related(PREFETCH_RELATED_FIELDS))
 
@@ -31,3 +33,17 @@ async def get_genre(id: int):
         raise HTTPException(status.HTTP_404_NOT_FOUND)
 
     return genre
+
+
+@genre_router.get(
+    "/search/{query}", response_model=CustomPage[Genre], dependencies=[Depends(Params)]
+)
+async def search_genres(
+    query: str,
+    request: Request,
+    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+):
+    return await GenreMeiliSearchService.get(
+        {"query": query, "allowed_langs": allowed_langs},
+        request.app.state.redis,
+    )
