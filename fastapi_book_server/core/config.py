@@ -20,6 +20,8 @@ class EnvConfig(BaseSettings):
     MEILI_HOST: str
     MEILI_MASTER_KEY: str
 
+    SENTRY_SDN: str
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

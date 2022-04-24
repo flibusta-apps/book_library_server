@@ -186,7 +186,7 @@ test = ["pytest (>=6.2.4,<7.0.0)", "pytest-cov (>=2.12.0,<4.0.0)", "mypy (==0.91
 
 [[package]]
 name = "fastapi-pagination"
-version = "0.9.1"
+version = "0.9.3"
 description = "FastAPI pagination"
 category = "main"
 optional = false
@@ -199,16 +199,17 @@ pydantic = ">=1.7.2"
 
 [package.extras]
 gino = ["gino[starlette] (>=1.0.1)", "SQLAlchemy (>=1.3.20)"]
-all = ["gino[starlette] (>=1.0.1)", "SQLAlchemy (>=1.3.20)", "databases[sqlite,mysql,postgresql] (>=0.4.0)", "orm (>=0.1.5)", "tortoise-orm[aiosqlite,aiomysql,asyncpg] (>=0.16.18,<0.18.0)", "asyncpg (>=0.24.0)", "ormar (>=0.10.5)", "Django (<3.3.0)", "piccolo (>=0.29,<0.35)", "motor (>=2.5.1,<3.0.0)"]
+all = ["gino[starlette] (>=1.0.1)", "SQLAlchemy (>=1.3.20)", "databases[mysql,sqlite,postgresql] (>=0.4.0)", "orm (>=0.1.5)", "tortoise-orm[aiomysql,asyncpg,aiosqlite] (>=0.16.18,<0.20.0)", "asyncpg (>=0.24.0)", "ormar (>=0.10.5)", "Django (<3.3.0)", "piccolo (>=0.29,<0.35)", "motor (>=2.5.1,<3.0.0)", "mongoengine (>=0.23.1,<0.25.0)"]
 sqlalchemy = ["SQLAlchemy (>=1.3.20)"]
 asyncpg = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)"]
-databases = ["databases[sqlite,mysql,postgresql] (>=0.4.0)"]
-orm = ["databases[sqlite,mysql,postgresql] (>=0.4.0)", "orm (>=0.1.5)", "typesystem (>=0.2.0,<0.3.0)"]
-django = ["databases[sqlite,mysql,postgresql] (>=0.4.0)", "Django (<3.3.0)"]
-tortoise = ["tortoise-orm[aiosqlite,aiomysql,asyncpg] (>=0.16.18,<0.18.0)"]
+databases = ["databases[mysql,sqlite,postgresql] (>=0.4.0)"]
+orm = ["databases[mysql,sqlite,postgresql] (>=0.4.0)", "orm (>=0.1.5)", "typesystem (>=0.2.0,<0.3.0)"]
+django = ["databases[mysql,sqlite,postgresql] (>=0.4.0)", "Django (<3.3.0)"]
+tortoise = ["tortoise-orm[aiomysql,asyncpg,aiosqlite] (>=0.16.18,<0.20.0)"]
 ormar = ["ormar (>=0.10.5)"]
 piccolo = ["piccolo (>=0.29,<0.35)"]
 motor = ["motor (>=2.5.1,<3.0.0)"]
+mongoengine = ["mongoengine (>=0.23.1,<0.25.0)"]
 
 [[package]]
 name = "greenlet"
@@ -517,6 +518,36 @@ idna = {version = "*", optional = true, markers = "extra == \"idna2008\""}
 idna2008 = ["idna"]
 
 [[package]]
+name = "sentry-sdk"
+version = "1.5.10"
+description = "Python client for Sentry (https://sentry.io)"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+certifi = "*"
+urllib3 = ">=1.10.0"
+
+[package.extras]
+aiohttp = ["aiohttp (>=3.5)"]
+beam = ["apache-beam (>=2.12)"]
+bottle = ["bottle (>=0.12.13)"]
+celery = ["celery (>=3)"]
+chalice = ["chalice (>=1.16.0)"]
+django = ["django (>=1.8)"]
+falcon = ["falcon (>=1.4)"]
+flask = ["flask (>=0.11)", "blinker (>=1.1)"]
+httpx = ["httpx (>=0.16.0)"]
+pure_eval = ["pure-eval", "executing", "asttokens"]
+pyspark = ["pyspark (>=2.4.4)"]
+quart = ["quart (>=0.16.1)", "blinker (>=1.1)"]
+rq = ["rq (>=0.6)"]
+sanic = ["sanic (>=0.8)"]
+sqlalchemy = ["sqlalchemy (>=1.2)"]
+tornado = ["tornado (>=5)"]
+
+[[package]]
 name = "sniffio"
 version = "1.2.0"
 description = "Sniff out which async library your code is running under"
@@ -631,7 +662,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "7e8e5d5580f2154d1e63182d39ab6bcd19605d7d387d1d0344c02d526584cf17"
+content-hash = "67bf55383373247950088a945105dca3b3a024eab54b8ec6a946a2661c824075"
 
 [metadata.files]
 aioredis = [
@@ -706,8 +737,8 @@ fastapi = [
     {file = "fastapi-0.75.1.tar.gz", hash = "sha256:8b62bde916d657803fb60fffe88e2b2c9fb854583784607e4347681cae20ad01"},
 ]
 fastapi-pagination = [
-    {file = "fastapi-pagination-0.9.1.tar.gz", hash = "sha256:401b0fdbc0e12e7b178c7f37709918a93df44827d3de75fb7d85d6c4465e77b0"},
-    {file = "fastapi_pagination-0.9.1-py3-none-any.whl", hash = "sha256:ef84b01f364e5eb4dec0c59068c02e83c4a04319659354297680122592c9b884"},
+    {file = "fastapi-pagination-0.9.3.tar.gz", hash = "sha256:bf2bd538786b5804130b01b1a0b3bdab5917e3409ef729e86f9e8224055e9432"},
+    {file = "fastapi_pagination-0.9.3-py3-none-any.whl", hash = "sha256:d1dbdcf996df60006f1d4366dcb9abfa8fbc73b9779e0483cb7701d1c4daafc1"},
 ]
 greenlet = [
     {file = "greenlet-1.1.2-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:58df5c2a0e293bf665a51f8a100d3e9956febfbf1d9aaf8c0677cf70218910c6"},
@@ -967,6 +998,10 @@ requests = [
 rfc3986 = [
     {file = "rfc3986-1.5.0-py2.py3-none-any.whl", hash = "sha256:a86d6e1f5b1dc238b218b012df0aa79409667bb209e58da56d0b94704e712a97"},
     {file = "rfc3986-1.5.0.tar.gz", hash = "sha256:270aaf10d87d0d4e095063c65bf3ddbc6ee3d0b226328ce21e036f946e421835"},
+]
+sentry-sdk = [
+    {file = "sentry-sdk-1.5.10.tar.gz", hash = "sha256:0a9eb20a84f4c17c08c57488d59fdad18669db71ebecb28fb0721423a33535f9"},
+    {file = "sentry_sdk-1.5.10-py2.py3-none-any.whl", hash = "sha256:972c8fe9318a415b5cf35f687f568321472ef94b36806407c370ce9c88a67f2e"},
 ]
 sniffio = [
     {file = "sniffio-1.2.0-py3-none-any.whl", hash = "sha256:471b71698eac1c2112a40ce2752bb2f4a4814c22a54a3eed3676bc0f5ca9f663"},
