@@ -14,7 +14,7 @@ alembic = "^1.7.7"
 fastapi-pagination = {extras = ["ormar"], version = "^0.9.3"}
 orjson = "^3.6.8"
 aioredis = "^2.0.1"
-httpx = "^0.22.0"
+httpx = ">=0.23.0"
 meilisearch = "^0.18.3"
 prometheus-fastapi-instrumentator = "^5.8.1"
 uvloop = "^0.16.0"
