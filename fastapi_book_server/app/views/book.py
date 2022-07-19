@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 
 from fastapi_pagination import Params
@@ -42,9 +44,10 @@ async def get_books(
 async def get_random_book(
     request: Request,
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    genre: Optional[int] = None,
 ):
     book_id = await GetRandomBookService.get_random_id(
-        {"allowed_langs": allowed_langs}, request.app.state.redis
+        {"allowed_langs": allowed_langs, "genre": genre}, request.app.state.redis
     )
 
     book = (

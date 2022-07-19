@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 from app.models import Book as BookDB
 from app.services.common import (
@@ -46,7 +46,19 @@ SELECT id FROM filtered_books;
 """
 
 
+GET_OBJECTS_ID_BY_GENRE_QUERY = """
+WITH filtered_books AS (
+    SELECT books.id FROM books
+    LEFT JOIN book_genres ON (book_genres.book = books.id)
+    WHERE books.is_deleted = 'f' AND book_genres.genre = :genre
+        AND books.lang = ANY(:langs ::text[])
+)
+SELECT id FROM filtered_books;
+"""
+
+
 class RandomBookServiceQuery(TypedDict):
+    genre: Optional[int]
     allowed_langs: frozenset[str]
 
 
@@ -56,6 +68,19 @@ class GetRandomBookService(GetRandomService[BookDB, RandomBookServiceQuery]):
     SELECT_RELATED = ["authors", "translators", "annotations"]
 
     GET_OBJECTS_ID_QUERY = GET_OBJECTS_ID_QUERY
+    GET_OBJECTS_ID_BY_GENRE_QUERY = GET_OBJECTS_ID_BY_GENRE_QUERY
+
+    @classmethod
+    async def _get_objects_from_db(cls, query: RandomBookServiceQuery) -> list[int]:
+        if query.get("genre") is None:
+            ex_query = cls.objects_id_query
+            params = {"langs": query["allowed_langs"]}
+        else:
+            ex_query = cls.GET_OBJECTS_ID_BY_GENRE_QUERY
+            params = {"langs": query["allowed_langs"], "genre": query["genre"]}
+
+        objects = await cls.database.fetch_all(ex_query, params)
+        return [obj["id"] for obj in objects]
 
 
 class BookMeiliSearchService(MeiliSearchService):
