@@ -32,7 +32,7 @@ async def get_random_sequence(
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     sequence_id = await GetRandomSequenceService.get_random_id(
-        allowed_langs,
+        {"allowed_langs": allowed_langs},
         request.app.state.redis,
     )
 

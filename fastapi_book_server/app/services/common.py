@@ -20,20 +20,11 @@ MODEL = TypeVar("MODEL", bound=Model)
 QUERY = TypeVar("QUERY", bound=TypedDict)
 
 
-class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
+class BaseService(Generic[MODEL, QUERY], abc.ABC):
     MODEL_CLASS: Optional[MODEL] = None
-    SELECT_RELATED: Optional[Union[list[str], str]] = None
-    PREFETCH_RELATED: Optional[Union[list[str], str]] = None
-    CUSTOM_CACHE_PREFIX: Optional[str] = None
+    CACHE_PREFIX: str = ""
+    CUSTOM_MODEL_CACHE_NAME: Optional[str] = None
     CACHE_TTL = 6 * 60 * 60
-
-    @classmethod
-    def get_params(cls) -> AbstractParams:
-        return resolve_params()
-
-    @classmethod
-    def get_raw_params(cls) -> RawParams:
-        return resolve_params().to_raw_params()
 
     @classmethod
     @property
@@ -54,45 +45,18 @@ class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
     @classmethod
     @property
     def cache_prefix(cls) -> str:
-        return cls.CUSTOM_CACHE_PREFIX or cls.model.Meta.tablename
+        return cls.CUSTOM_MODEL_CACHE_NAME or cls.model.Meta.tablename
 
     @staticmethod
-    def _get_query_hash(query: QUERY):
+    def _get_query_hash(query: QUERY) -> int:
         return hash(frozenset(query.items()))
-
-    @classmethod
-    async def _get_object_ids(cls, query: QUERY) -> list[int]:
-        ...
 
     @classmethod
     def get_cache_key(cls, query: QUERY) -> str:
         model_class_name = cls.cache_prefix
         query_hash = cls._get_query_hash(query)
-        return f"{model_class_name}_{query_hash}"
-
-    @classmethod
-    async def get_cached_ids(
-        cls,
-        query: QUERY,
-        redis: aioredis.Redis,
-        params: RawParams,
-    ) -> Optional[tuple[int, list[int]]]:
-        try:
-            key = cls.get_cache_key(query)
-            active_key = f"{key}_active"
-
-            if not await redis.exists(active_key):
-                return None
-
-            objects_count, objects = await asyncio.gather(
-                redis.llen(key),
-                redis.lrange(key, params.offset, params.offset + params.limit),
-            )
-
-            return objects_count, [int(item.decode()) for item in objects]
-        except aioredis.RedisError as e:
-            print(e)
-            return None
+        cache_key = f"{model_class_name}_{query_hash}"
+        return f"{cls.CACHE_PREFIX}_{cache_key}" if cls.CACHE_PREFIX else cache_key
 
     @classmethod
     async def cache_object_ids(
@@ -117,6 +81,47 @@ class BaseSearchService(Generic[MODEL, QUERY], abc.ABC):
         except aioredis.RedisError as e:
             print(e)
             return False
+
+
+class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
+    SELECT_RELATED: Optional[Union[list[str], str]] = None
+    PREFETCH_RELATED: Optional[Union[list[str], str]] = None
+
+    @classmethod
+    def get_params(cls) -> AbstractParams:
+        return resolve_params()
+
+    @classmethod
+    def get_raw_params(cls) -> RawParams:
+        return resolve_params().to_raw_params()
+
+    @classmethod
+    async def _get_object_ids(cls, query: QUERY) -> list[int]:
+        ...
+
+    @classmethod
+    async def get_cached_ids(
+        cls,
+        query: QUERY,
+        redis: aioredis.Redis,
+        params: RawParams,
+    ) -> Optional[tuple[int, list[int]]]:
+        try:
+            key = cls.get_cache_key(query)
+            active_key = f"{key}_active"
+
+            if not await redis.exists(active_key):
+                return None
+
+            objects_count, objects = await asyncio.gather(
+                redis.llen(key),
+                redis.lrange(key, params.offset, params.offset + params.limit),
+            )
+
+            return objects_count, [int(item.decode()) for item in objects]
+        except aioredis.RedisError as e:
+            print(e)
+            return None
 
     @classmethod
     async def get_object_ids(
@@ -201,13 +206,17 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
     @classmethod
     @property
     def lang_key(cls) -> str:
-        assert cls.MS_INDEX_LANG_KEY is not None, f"MODEL in {cls.__name__} don't set!"
+        assert (
+            cls.MS_INDEX_LANG_KEY is not None
+        ), f"MS_INDEX_LANG_KEY in {cls.__name__} don't set!"
         return cls.MS_INDEX_LANG_KEY
 
     @classmethod
     @property
     def index_name(cls) -> str:
-        assert cls.MS_INDEX_NAME is not None, f"MODEL in {cls.__name__} don't set!"
+        assert (
+            cls.MS_INDEX_NAME is not None
+        ), f"MS_INDEX_NAME in {cls.__name__} don't set!"
         return cls.MS_INDEX_NAME
 
     @classmethod
@@ -251,37 +260,9 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
         )
 
 
-class GetRandomService(Generic[MODEL]):
-    MODEL_CLASS: Optional[MODEL] = None
+class GetRandomService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
     GET_OBJECTS_ID_QUERY: Optional[str] = None
-    CUSTOM_CACHE_PREFIX: Optional[str] = None
-    CACHE_TTL = 6 * 60 * 60
-
-    @classmethod
-    @property
-    def model(cls) -> MODEL:
-        assert cls.MODEL_CLASS is not None, f"MODEL in {cls.__name__} don't set!"
-        return cls.MODEL_CLASS
-
-    @classmethod
-    @property
-    def database(cls) -> Database:
-        return cls.model.Meta.database
-
-    @classmethod
-    @property
-    def cache_prefix(cls) -> str:
-        return cls.CUSTOM_CACHE_PREFIX or cls.model.Meta.tablename
-
-    @staticmethod
-    def _get_query_hash(query: frozenset[str]):
-        return hash(query)
-
-    @classmethod
-    def get_cache_key(cls, query: frozenset[str]) -> str:
-        model_class_name = cls.cache_prefix
-        query_hash = cls._get_query_hash(query)
-        return f"random_{model_class_name}_{query_hash}"
+    CACHE_PREFIX: str = "random"
 
     @classmethod
     @property
@@ -292,18 +273,18 @@ class GetRandomService(Generic[MODEL]):
         return cls.GET_OBJECTS_ID_QUERY
 
     @classmethod
-    async def _get_objects_from_db(cls, allowed_langs: frozenset[str]) -> list[int]:
+    async def _get_objects_from_db(cls, query: QUERY) -> list[int]:
         objects = await cls.database.fetch_all(
-            cls.objects_id_query, {"langs": allowed_langs}
+            cls.objects_id_query, {"langs": query["allowed_langs"]}
         )
         return [obj["id"] for obj in objects]
 
     @classmethod
     async def _get_random_object_from_cache(
-        cls, allowed_langs: frozenset[str], redis: aioredis.Redis
+        cls, query: QUERY, redis: aioredis.Redis
     ) -> Optional[int]:
         try:
-            key = cls.get_cache_key(allowed_langs)
+            key = cls.get_cache_key(query)
             active_key = f"{key}_active"
 
             if not await redis.exists(active_key):
@@ -317,40 +298,19 @@ class GetRandomService(Generic[MODEL]):
             return None
 
     @classmethod
-    async def _cache_object_ids(
-        cls, object_ids: list[int], allowed_langs: frozenset[str], redis: aioredis.Redis
-    ) -> bool:
-        try:
-            key = cls.get_cache_key(allowed_langs)
-            active_key = f"{key}_active"
-
-            p = redis.pipeline()
-
-            await p.set(active_key, 1, ex=cls.CACHE_TTL)
-            await p.delete(key)
-            await p.sadd(key, *object_ids)
-
-            await p.execute()
-
-            return True
-        except aioredis.RedisError as e:
-            print(e)
-            return False
-
-    @classmethod
     async def get_random_id(
         cls,
-        allowed_langs: frozenset[str],
+        query: QUERY,
         redis: aioredis.Redis,
     ) -> int:
-        cached_object_id = await cls._get_random_object_from_cache(allowed_langs, redis)
+        cached_object_id = await cls._get_random_object_from_cache(query, redis)
 
         if cached_object_id is not None:
             return cached_object_id
 
-        object_ids = await cls._get_objects_from_db(allowed_langs)
+        object_ids = await cls._get_objects_from_db(query)
 
-        await cls._cache_object_ids(object_ids, allowed_langs, redis)
+        await cls.cache_object_ids(query, object_ids, redis)
 
         return choice(object_ids)
 

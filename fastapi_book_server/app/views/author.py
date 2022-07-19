@@ -42,7 +42,7 @@ async def get_random_author(
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     author_id = await GetRandomAuthorService.get_random_id(
-        allowed_langs, request.app.state.redis
+        {"allowed_langs": allowed_langs}, request.app.state.redis
     )
 
     return (

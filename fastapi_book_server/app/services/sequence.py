@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from app.models import Sequence
 from app.services.common import TRGMSearchService, MeiliSearchService, GetRandomService
 
@@ -33,6 +35,7 @@ SELECT ARRAY (
 class SequenceTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Sequence
     PREFETCH_RELATED = ["source"]
+
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
@@ -53,8 +56,14 @@ ORDER BY RANDOM() LIMIT 1;
 """
 
 
-class GetRandomSequenceService(GetRandomService):
-    MODEL_CLASS = Sequence
+class RandomSequenceServiceQuery(TypedDict):
+    allowed_langs: frozenset[str]
+
+
+class GetRandomSequenceService(GetRandomService[Sequence, RandomSequenceServiceQuery]):
+    MODEL_CLASS = Sequence  # type: ignore
+    PREFETCH_RELATED = ["source"]
+
     GET_OBJECTS_ID_QUERY = GET_OBJECTS_ID_QUERY
 
 

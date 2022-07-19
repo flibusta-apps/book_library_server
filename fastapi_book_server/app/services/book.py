@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from app.models import Book as BookDB
 from app.services.common import (
     TRGMSearchService,
@@ -25,6 +27,7 @@ class BookTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = BookDB
     PREFETCH_RELATED = ["source"]
     SELECT_RELATED = ["authors", "translators", "annotations"]
+
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
@@ -43,8 +46,15 @@ SELECT id FROM filtered_books;
 """
 
 
-class GetRandomBookService(GetRandomService):
-    MODEL_CLASS = BookDB
+class RandomBookServiceQuery(TypedDict):
+    allowed_langs: frozenset[str]
+
+
+class GetRandomBookService(GetRandomService[BookDB, RandomBookServiceQuery]):
+    MODEL_CLASS = BookDB  # type: ignore
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["authors", "translators", "annotations"]
+
     GET_OBJECTS_ID_QUERY = GET_OBJECTS_ID_QUERY
 
 

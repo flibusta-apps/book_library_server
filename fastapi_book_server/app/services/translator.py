@@ -46,6 +46,7 @@ class TranslatorTGRMSearchService(TRGMSearchService):
     CUSTOM_CACHE_PREFIX = "translator"
     PREFETCH_RELATED = ["source"]
     SELECT_RELATED = ["annotations"]
+
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 

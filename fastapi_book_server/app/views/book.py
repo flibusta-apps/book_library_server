@@ -44,7 +44,7 @@ async def get_random_book(
     allowed_langs: frozenset[str] = Depends(get_allowed_langs),
 ):
     book_id = await GetRandomBookService.get_random_id(
-        allowed_langs, request.app.state.redis
+        {"allowed_langs": allowed_langs}, request.app.state.redis
     )
 
     book = (

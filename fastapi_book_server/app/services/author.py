@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from app.models import Author
 from app.services.common import TRGMSearchService, MeiliSearchService, GetRandomService
 
@@ -45,6 +47,7 @@ class AuthorTGRMSearchService(TRGMSearchService):
     MODEL_CLASS = Author
     PREFETCH_RELATED = ["source"]
     SELECT_RELATED = ["annotations"]
+
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
@@ -62,8 +65,15 @@ SELECT id FROM filtered_authors;
 """
 
 
-class GetRandomAuthorService(GetRandomService):
-    MODEL_CLASS = Author
+class RandomAuthorServiceQuery(TypedDict):
+    allowed_langs: frozenset[str]
+
+
+class GetRandomAuthorService(GetRandomService[Author, RandomAuthorServiceQuery]):
+    MODEL_CLASS = Author  # type: ignore
+    PREFETCH_RELATED = ["source"]
+    SELECT_RELATED = ["annotations"]
+
     GET_OBJECTS_ID_QUERY = GET_OBJECTS_ID_QUERY
 
 
