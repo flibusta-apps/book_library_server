@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 import ormar
 from sqlalchemy import text
@@ -150,6 +151,7 @@ class Book(ormar.Model):
     is_deleted: bool = ormar.Boolean(
         default=False, server_default=text("false"), nullable=False
     )
+    pages: Optional[int] = ormar.Integer(minimum=0, nullable=True)  # type: ignore
 
     authors = ormar.ManyToMany(Author, through=BookAuthors)
     translators = ormar.ManyToMany(
