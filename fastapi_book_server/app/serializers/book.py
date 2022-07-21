@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -37,3 +38,4 @@ class BookDetail(RemoteBook):
     sequences: list[Sequence]
     genres: list[BookGenre]
     is_deleted: bool
+    pages: Optional[int]
