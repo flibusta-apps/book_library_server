@@ -225,8 +225,8 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
 
     @classmethod
     def make_request(
-        cls, query: str, allowed_langs_filter: list[list[str]], offset: int
-    ):
+        cls, query: str, allowed_langs_filter: list[list[str]], offset: int, limit: int
+    ) -> tuple[int, list[int]]:
         client = meilisearch.Client(env_config.MEILI_HOST, env_config.MEILI_MASTER_KEY)
         index = client.index(cls.index_name)
 
@@ -235,7 +235,7 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
             {
                 "filter": allowed_langs_filter,
                 "offset": offset,
-                "limit": 630,
+                "limit": limit,
                 "attributesToRetrieve": ["id"],
             },
         )
@@ -243,12 +243,11 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
         total: int = result["estimatedTotalHits"]
         ids: list[int] = [r["id"] for r in result["hits"][:total]]
 
-        return ids
+        return total, ids
 
     @classmethod
-    async def _get_object_ids(cls, query: SearchQuery) -> list[int]:
+    async def _get_object_ids(cls, query: SearchQuery) -> tuple[int, list[int]]:
         params = cls.get_raw_params()
-
         allowed_langs_filter = cls.get_allowed_langs_filter(query["allowed_langs"])
 
         return await asyncio.get_event_loop().run_in_executor(
@@ -257,7 +256,14 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
             query["query"],
             allowed_langs_filter,
             params.offset,
+            params.limit,
         )
+
+    @classmethod
+    async def get_object_ids(
+        cls, query: SearchQuery, redis: aioredis.Redis
+    ) -> tuple[int, list[int]]:
+        return await cls._get_object_ids(query)
 
 
 class GetRandomService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
