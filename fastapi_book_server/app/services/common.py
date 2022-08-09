@@ -240,7 +240,7 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
             },
         )
 
-        total: int = result["nbHits"]
+        total: int = result["estimatedTotalHits"]
         ids: list[int] = [r["id"] for r in result["hits"][:total]]
 
         return ids
