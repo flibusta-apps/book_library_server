@@ -14,17 +14,6 @@ typing-extensions = "*"
 hiredis = ["hiredis (>=1.0)"]
 
 [[package]]
-name = "aiosqlite"
-version = "0.17.0"
-description = "asyncio bridge to the standard sqlite3 module"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-typing_extensions = ">=3.7.2"
-
-[[package]]
 name = "alembic"
 version = "1.7.7"
 description = "A database migration tool for SQLAlchemy."
@@ -199,13 +188,13 @@ pydantic = ">=1.7.2"
 
 [package.extras]
 gino = ["gino[starlette] (>=1.0.1)", "SQLAlchemy (>=1.3.20)"]
-all = ["gino[starlette] (>=1.0.1)", "SQLAlchemy (>=1.3.20)", "databases[postgresql,sqlite,mysql] (>=0.4.0)", "orm (>=0.1.5)", "tortoise-orm[aiomysql,aiosqlite,asyncpg] (>=0.16.18,<0.20.0)", "asyncpg (>=0.24.0)", "ormar (>=0.10.5)", "Django (<3.3.0)", "piccolo (>=0.29,<0.35)", "motor (>=2.5.1,<3.0.0)", "mongoengine (>=0.23.1,<0.25.0)"]
+all = ["gino[starlette] (>=1.0.1)", "SQLAlchemy (>=1.3.20)", "databases[mysql,postgresql,sqlite] (>=0.4.0)", "orm (>=0.1.5)", "tortoise-orm[asyncpg,aiomysql,aiosqlite] (>=0.16.18,<0.20.0)", "asyncpg (>=0.24.0)", "ormar (>=0.10.5)", "Django (<3.3.0)", "piccolo (>=0.29,<0.35)", "motor (>=2.5.1,<3.0.0)", "mongoengine (>=0.23.1,<0.25.0)"]
 sqlalchemy = ["SQLAlchemy (>=1.3.20)"]
 asyncpg = ["SQLAlchemy (>=1.3.20)", "asyncpg (>=0.24.0)"]
-databases = ["databases[postgresql,sqlite,mysql] (>=0.4.0)"]
-orm = ["databases[postgresql,sqlite,mysql] (>=0.4.0)", "orm (>=0.1.5)", "typesystem (>=0.2.0,<0.3.0)"]
-django = ["databases[postgresql,sqlite,mysql] (>=0.4.0)", "Django (<3.3.0)"]
-tortoise = ["tortoise-orm[aiomysql,aiosqlite,asyncpg] (>=0.16.18,<0.20.0)"]
+databases = ["databases[mysql,postgresql,sqlite] (>=0.4.0)"]
+orm = ["databases[mysql,postgresql,sqlite] (>=0.4.0)", "orm (>=0.1.5)", "typesystem (>=0.2.0,<0.3.0)"]
+django = ["databases[mysql,postgresql,sqlite] (>=0.4.0)", "Django (<3.3.0)"]
+tortoise = ["tortoise-orm[asyncpg,aiomysql,aiosqlite] (>=0.16.18,<0.20.0)"]
 ormar = ["ormar (>=0.10.5)"]
 piccolo = ["piccolo (>=0.29,<0.35)"]
 motor = ["motor (>=2.5.1,<3.0.0)"]
@@ -324,7 +313,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "meilisearch"
-version = "0.18.3"
+version = "0.19.1"
 description = "The python client for Meilisearch API."
 category = "main"
 optional = false
@@ -343,26 +332,27 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "ormar"
-version = "0.11.0"
+version = "0.11.2"
 description = "A simple async ORM with fastapi in mind and pydantic validation."
 category = "main"
 optional = false
 python-versions = ">=3.7.0,<4.0.0"
 
 [package.dependencies]
-aiosqlite = ">=0.17.0,<0.18.0"
-asyncpg = {version = ">=0.24,<0.26", optional = true, markers = "extra == \"postgresql\" or extra == \"postgres\" or extra == \"dev\""}
-databases = ">=0.3.2,<0.5.0 || >0.5.0,<0.5.1 || >0.5.1,<0.5.2 || >0.5.2,<0.5.3 || >0.5.3,<=0.5.5"
-psycopg2-binary = {version = ">=2.9.1,<3.0.0", optional = true, markers = "extra == \"postgresql\" or extra == \"postgres\" or extra == \"dev\""}
+asyncpg = {version = ">=0.24,<0.26", optional = true, markers = "extra == \"postgresql\" or extra == \"postgres\" or extra == \"all\""}
+databases = ">=0.3.2,<0.5.0 || >0.5.0,<0.5.1 || >0.5.1,<0.5.2 || >0.5.2,<0.5.3 || >0.5.3,<0.6.1"
+psycopg2-binary = {version = ">=2.9.1,<3.0.0", optional = true, markers = "extra == \"postgresql\" or extra == \"postgres\" or extra == \"aiopg\" or extra == \"all\""}
 pydantic = ">=1.6.1,<1.7 || >1.7,<1.7.1 || >1.7.1,<1.7.2 || >1.7.2,<1.7.3 || >1.7.3,<1.8 || >1.8,<1.8.1 || >1.8.1,<=1.9.1"
-SQLAlchemy = ">=1.3.18,<=1.4.31"
+SQLAlchemy = ">=1.3.18,<1.4.39"
 
 [package.extras]
+crypto = ["cryptography (>=35,<38)"]
+all = ["cryptography (>=35,<38)", "aiosqlite (>=0.17.0,<0.18.0)", "aiomysql (>=0.0.21,<0.0.23)", "aiopg (>=1.3.3,<2.0.0)", "asyncpg (>=0.24,<0.26)", "psycopg2-binary (>=2.9.1,<3.0.0)", "mysqlclient (>=2.1.0,<3.0.0)", "PyMySQL (>=0.9,<=0.9.3)", "orjson (>=3.6.4)"]
+sqlite = ["aiosqlite (>=0.17.0,<0.18.0)"]
+mysql = ["aiomysql (>=0.0.21,<0.0.23)", "PyMySQL (>=0.9,<=0.9.3)"]
+aiopg = ["aiopg (>=1.3.3,<2.0.0)", "psycopg2-binary (>=2.9.1,<3.0.0)"]
 postgresql = ["asyncpg (>=0.24,<0.26)", "psycopg2-binary (>=2.9.1,<3.0.0)"]
 postgres = ["asyncpg (>=0.24,<0.26)", "psycopg2-binary (>=2.9.1,<3.0.0)"]
-dev = ["asyncpg (>=0.24,<0.26)", "psycopg2-binary (>=2.9.1,<3.0.0)", "aiomysql (>=0.0.21,<0.0.23)", "cryptography (>=35,<37)", "orjson (>=3.6.4)"]
-mysql = ["aiomysql (>=0.0.21,<0.0.23)"]
-crypto = ["cryptography (>=35,<37)"]
 orjson = ["orjson (>=3.6.4)"]
 
 [[package]]
@@ -664,16 +654,12 @@ test = ["aiohttp", "flake8 (>=3.9.2,<3.10.0)", "psutil", "pycodestyle (>=2.7.0,<
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "f4155ed1a26eecc99a35c013231967a4b1f494f3be2186439388c5e885c9227d"
+content-hash = "82e887c2156fd3c7810b5b3ad5ebc810569abdb38a2b0fe410d4d7a940e5d138"
 
 [metadata.files]
 aioredis = [
     {file = "aioredis-2.0.1-py3-none-any.whl", hash = "sha256:9ac0d0b3b485d293b8ca1987e6de8658d7dafcca1cddfcd1d506cae8cdebfdd6"},
     {file = "aioredis-2.0.1.tar.gz", hash = "sha256:eaa51aaf993f2d71f54b70527c440437ba65340588afeb786cd87c55c89cd98e"},
-]
-aiosqlite = [
-    {file = "aiosqlite-0.17.0-py3-none-any.whl", hash = "sha256:6c49dc6d3405929b1d08eeccc72306d3677503cc5e5e43771efc1e00232e8231"},
-    {file = "aiosqlite-0.17.0.tar.gz", hash = "sha256:f0e6acc24bc4864149267ac82fb46dfb3be4455f99fe21df82609cc6e6baee51"},
 ]
 alembic = [
     {file = "alembic-1.7.7-py3-none-any.whl", hash = "sha256:29be0856ec7591c39f4e1cb10f198045d890e6e2274cf8da80cb5e721a09642b"},
@@ -882,10 +868,7 @@ markupsafe = [
     {file = "MarkupSafe-2.1.1-cp39-cp39-win_amd64.whl", hash = "sha256:46d00d6cfecdde84d40e572d63735ef81423ad31184100411e6e3388d405e247"},
     {file = "MarkupSafe-2.1.1.tar.gz", hash = "sha256:7f91197cc9e48f989d12e4e6fbc46495c446636dfc81b9ccf50bb0ec74b91d4b"},
 ]
-meilisearch = [
-    {file = "meilisearch-0.18.3-py3-none-any.whl", hash = "sha256:4d67192c07bae42f7d9611a6f38805c7c531ee1bc6df8e6b28d827b88ce18ff0"},
-    {file = "meilisearch-0.18.3.tar.gz", hash = "sha256:30b39a1cc33e61f54af5f2d632a39cf3648d9335e7a0e215b0906946ed63f224"},
-]
+meilisearch = []
 orjson = [
     {file = "orjson-3.6.8-cp310-cp310-macosx_10_7_x86_64.whl", hash = "sha256:3a287a650458de2211db03681b71c3e5cb2212b62f17a39df8ad99fc54855d0f"},
     {file = "orjson-3.6.8-cp310-cp310-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:5204e25c12cea58e524fc82f7c27ed0586f592f777b33075a92ab7b3eb3687c2"},
@@ -920,10 +903,7 @@ orjson = [
     {file = "orjson-3.6.8-cp39-none-win_amd64.whl", hash = "sha256:0c89b419914d3d1f65a1b0883f377abe42a6e44f6624ba1c63e8846cbfc2fa60"},
     {file = "orjson-3.6.8.tar.gz", hash = "sha256:e19d23741c5de13689bb316abfccea15a19c264e3ec8eb332a5319a583595ace"},
 ]
-ormar = [
-    {file = "ormar-0.11.0-py3-none-any.whl", hash = "sha256:5082ae37fa05f40e1ccaf1b082e6075f82eafd9fa1a90d57b2446719c7390dd1"},
-    {file = "ormar-0.11.0.tar.gz", hash = "sha256:8703e545dfd61449fc5fd55aaa82f2185841b85eeb1ed7bde41c723d996d2dfb"},
-]
+ormar = []
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},
     {file = "packaging-21.3.tar.gz", hash = "sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb"},
