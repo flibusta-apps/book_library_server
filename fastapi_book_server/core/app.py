@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
-import aioredis
 from fastapi_pagination import add_pagination
 from prometheus_fastapi_instrumentator import Instrumentator
+from redis import asyncio as aioredis
 import sentry_sdk
 
 from app.views import routers

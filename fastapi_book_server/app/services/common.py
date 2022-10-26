@@ -4,12 +4,12 @@ from concurrent.futures import ThreadPoolExecutor
 from random import choice
 from typing import Optional, Generic, TypeVar, TypedDict, Union
 
-import aioredis
 from databases import Database
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
 import meilisearch
 from ormar import Model, QuerySet
+from redis import asyncio as aioredis
 from sqlalchemy import Table
 
 from app.utils.pagination import Page, CustomPage
@@ -296,9 +296,9 @@ class GetRandomService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
             if not await redis.exists(active_key):
                 return None
 
-            data: bytes = await redis.srandmember(key)
+            data: str = await redis.srandmember(key)  # type: ignore
 
-            return int(data.decode())
+            return int(data)
         except aioredis.RedisError as e:
             print(e)
             return None
