@@ -2,19 +2,19 @@ exclude: 'docs|node_modules|migrations|.git|.tox'
 
 repos:
 - repo: https://github.com/ambv/black
-  rev: 22.3.0
+  rev: 22.12.0
   hooks:
     - id: black
-      language_version: python3.9
+      language_version: python3.11
 - repo: https://github.com/pycqa/isort
-  rev: 5.10.1
+  rev: v5.11.3
   hooks:
     - id: isort
 - repo: https://github.com/csachs/pyproject-flake8
-  rev: v0.0.1a3
+  rev: v6.0.0.post1
   hooks:
     - id: pyproject-flake8
       additional_dependencies: [
-        '-e', 'git+https://github.com/pycqa/pyflakes@1911c20#egg=pyflakes',
-        '-e', 'git+https://github.com/pycqa/pycodestyle@d219c68#egg=pycodestyle',
+        '-e', 'git+https://github.com/pycqa/pyflakes@b37f91a#egg=pyflakes',
+        '-e', 'git+https://github.com/pycqa/pycodestyle@1063db8#egg=pycodestyle',
       ]
