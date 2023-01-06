@@ -220,12 +220,13 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
         return cls.MS_INDEX_NAME
 
     @classmethod
-    def get_allowed_langs_filter(cls, allowed_langs: frozenset[str]) -> list[list[str]]:
-        return [[f"{cls.lang_key} = {lang}" for lang in allowed_langs]]
+    def get_allowed_langs_filter(cls, allowed_langs: frozenset[str]) -> list[str]:
+        langs_values = ", ".join(allowed_langs)
+        return [f"{cls.lang_key} IN [{langs_values}]"]
 
     @classmethod
     def make_request(
-        cls, query: str, allowed_langs_filter: list[list[str]], offset: int, limit: int
+        cls, query: str, allowed_langs_filter: list[str], offset: int, limit: int
     ) -> tuple[int, list[int]]:
         client = meilisearch.Client(env_config.MEILI_HOST, env_config.MEILI_MASTER_KEY)
         index = client.index(cls.index_name)
