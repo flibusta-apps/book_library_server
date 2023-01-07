@@ -1,22 +1,20 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException, status
-
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi_pagination import Params
 
 from app.depends import check_token, get_allowed_langs
 from app.filters.book import get_book_filter
 from app.models import Book as BookDB
 from app.models import BookAnnotation as BookAnnotationDB
-from app.serializers.book import Book, RemoteBook, BookDetail
+from app.serializers.book import Book, BookDetail, RemoteBook
 from app.serializers.book_annotation import BookAnnotation
 from app.services.book import (
-    BookMeiliSearchService,
     BookFilterService,
+    BookMeiliSearchService,
     GetRandomBookService,
 )
 from app.utils.pagination import CustomPage
-
 
 book_router = APIRouter(
     prefix="/api/v1/books",

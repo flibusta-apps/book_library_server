@@ -8,7 +8,6 @@ from app.views.sequence import sequence_router
 from app.views.source import source_router
 from app.views.translation import translation_router
 
-
 routers = [
     source_router,
     author_router,

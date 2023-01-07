@@ -1,13 +1,12 @@
-from typing import TypedDict, Optional
+from typing import Optional, TypedDict
 
 from app.models import Book as BookDB
 from app.services.common import (
-    TRGMSearchService,
-    MeiliSearchService,
-    GetRandomService,
     BaseFilterService,
+    GetRandomService,
+    MeiliSearchService,
+    TRGMSearchService,
 )
-
 
 GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(

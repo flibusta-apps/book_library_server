@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-
-from fastapi_pagination import Params, Page
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.ormar import paginate
 
 from app.depends import check_token
 from app.models import BookAnnotation as BookAnnotationDB
 from app.serializers.book_annotation import BookAnnotation
-
 
 book_annotation_router = APIRouter(
     prefix="/api/v1/book_annotations",

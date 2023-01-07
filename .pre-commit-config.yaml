@@ -6,15 +6,14 @@ repos:
   hooks:
     - id: black
       language_version: python3.11
-- repo: https://github.com/pycqa/isort
-  rev: v5.11.3
+
+- repo: https://github.com/charliermarsh/ruff-pre-commit
+  rev: 'v0.0.213'
   hooks:
-    - id: isort
-- repo: https://github.com/csachs/pyproject-flake8
-  rev: v6.0.0.post1
+    - id: ruff
+      args: ["--force-exclude"]
+
+- repo: https://github.com/crate-ci/typos
+  rev: v1.13.6
   hooks:
-    - id: pyproject-flake8
-      additional_dependencies: [
-        '-e', 'git+https://github.com/pycqa/pyflakes@b37f91a#egg=pyflakes',
-        '-e', 'git+https://github.com/pycqa/pycodestyle@1063db8#egg=pycodestyle',
-      ]
+    - id: typos

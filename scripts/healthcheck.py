@@ -1,6 +1,5 @@
 import httpx
 
-
 response = httpx.get(
     "http://localhost:8080/healthcheck",
 )

@@ -1,8 +1,7 @@
 from typing import TypedDict
 
 from app.models import Author
-from app.services.common import TRGMSearchService, MeiliSearchService, GetRandomService
-
+from app.services.common import GetRandomService, MeiliSearchService, TRGMSearchService
 
 GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(

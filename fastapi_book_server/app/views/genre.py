@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
-
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
@@ -9,7 +8,6 @@ from app.models import Genre as GenreDB
 from app.serializers.genre import Genre
 from app.services.genre import GenreMeiliSearchService
 from app.utils.pagination import CustomPage
-
 
 genre_router = APIRouter(
     prefix="/api/v1/genres", tags=["genres"], dependencies=[Depends(check_token)]
@@ -31,7 +29,8 @@ async def get_genres(genre_filter: dict = Depends(get_genre_filter)):
 @genre_router.get("/metas", response_model=list[str])
 async def get_genre_metas():
     genres = await GenreDB.objects.fields("meta").values_list(flatten=True)
-    return sorted(list(set(genres)))
+    genres.sort()
+    return list(set(genres))
 
 
 @genre_router.get("/{id}", response_model=Genre)

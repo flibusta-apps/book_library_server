@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 
-from fastapi.params import Query
+from fastapi import Query
 
 from app.depends import get_allowed_langs
 

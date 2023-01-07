@@ -2,19 +2,18 @@ import abc
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from random import choice
-from typing import Optional, Generic, TypeVar, TypedDict, Union
+from typing import Generic, Optional, TypedDict, TypeVar, Union
 
+import meilisearch
 from databases import Database
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
-import meilisearch
 from ormar import Model, QuerySet
 from redis import asyncio as aioredis
 from sqlalchemy import Table
 
-from app.utils.pagination import Page, CustomPage
+from app.utils.pagination import CustomPage, Page
 from core.config import env_config
-
 
 MODEL = TypeVar("MODEL", bound=Model)
 QUERY = TypeVar("QUERY", bound=TypedDict)

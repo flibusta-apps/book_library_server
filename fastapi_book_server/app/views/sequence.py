@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, Request
-
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
@@ -8,9 +7,8 @@ from app.models import Book as BookDB
 from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
 from app.serializers.sequence import Sequence
-from app.services.sequence import SequenceMeiliSearchService, GetRandomSequenceService
+from app.services.sequence import GetRandomSequenceService, SequenceMeiliSearchService
 from app.utils.pagination import CustomPage
-
 
 sequence_router = APIRouter(
     prefix="/api/v1/sequences",

@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException, status
-
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
@@ -12,7 +11,6 @@ from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorMeiliSearchService, GetRandomAuthorService
 from app.services.translator import TranslatorMeiliSearchService
 from app.utils.pagination import CustomPage
-
 
 author_router = APIRouter(
     prefix="/api/v1/authors",

@@ -4,7 +4,7 @@ from typing import Optional
 import ormar
 from sqlalchemy import text
 
-from core.db import metadata, database
+from core.db import database, metadata
 
 
 class BaseMeta(ormar.ModelMeta):
