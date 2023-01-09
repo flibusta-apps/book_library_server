@@ -4,10 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 from random import choice
 from typing import Generic, Optional, TypedDict, TypeVar, Union
 
-import meilisearch
 from databases import Database
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
+import meilisearch
 from ormar import Model, QuerySet
 from redis import asyncio as aioredis
 from sqlalchemy import Table
