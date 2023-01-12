@@ -43,6 +43,9 @@ def start_app() -> FastAPI:
         if database_.is_connected:
             await database_.disconnect()
 
-    Instrumentator().instrument(app).expose(app, include_in_schema=True)
+    Instrumentator(
+        should_ignore_untemplated=True,
+        excluded_handlers=["/docs", "/metrics", "/healthcheck"],
+    ).instrument(app).expose(app, include_in_schema=True)
 
     return app
