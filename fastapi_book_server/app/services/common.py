@@ -1,6 +1,7 @@
 import abc
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import hashlib
 from random import choice
 from typing import Generic, Optional, TypedDict, TypeVar, Union
 
@@ -8,10 +9,12 @@ from databases import Database
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
 import meilisearch
+import orjson
 from ormar import Model, QuerySet
 from redis import asyncio as aioredis
 from sqlalchemy import Table
 
+from app.utils.orjson_default import default as orjson_default
 from app.utils.pagination import CustomPage, Page
 from core.config import env_config
 
@@ -47,8 +50,9 @@ class BaseService(Generic[MODEL, QUERY], abc.ABC):
         return cls.CUSTOM_MODEL_CACHE_NAME or cls.model.Meta.tablename
 
     @staticmethod
-    def _get_query_hash(query: QUERY) -> int:
-        return hash(frozenset(query.items()))
+    def _get_query_hash(query: QUERY) -> str:
+        json_value = orjson.dumps(query, orjson_default, option=orjson.OPT_SORT_KEYS)
+        return hashlib.md5(json_value).hexdigest()
 
     @classmethod
     def get_cache_key(cls, query: QUERY) -> str:
