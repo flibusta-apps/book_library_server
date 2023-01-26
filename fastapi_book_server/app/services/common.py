@@ -76,7 +76,7 @@ class BaseService(Generic[MODEL, QUERY], abc.ABC):
 
             await p.delete(key)
             await p.set(active_key, 1, ex=cls.CACHE_TTL)
-            await p.rpush(key, *object_ids)
+            await p.sadd(key, *object_ids)
 
             await p.execute()
 
