@@ -50,8 +50,7 @@ WITH filtered_sequences AS (
         WHERE sequence = sequences.id
     )
 )
-SELECT id FROM filtered_sequences
-ORDER BY RANDOM() LIMIT 1;
+SELECT id FROM filtered_sequences;
 """
 
 
