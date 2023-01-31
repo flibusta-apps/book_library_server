@@ -128,28 +128,28 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
 
     @classmethod
     async def get_object_ids(
-        cls, query: QUERY, redis: aioredis.Redis
+        cls, query: QUERY, redis: aioredis.Redis, no_cache: bool
     ) -> tuple[int, list[int]]:
         params = cls.get_raw_params()
 
-        if (
+        if not no_cache and (
             cached_object_ids := await cls.get_cached_ids(query, redis, params)
-        ) is not None:
+        ):
             return cached_object_ids
 
         object_ids = await cls._get_object_ids(query)
         limited_object_ids = object_ids[params.offset : params.offset + params.limit]
 
-        if len(object_ids) != 0:
+        if not no_cache and len(object_ids) != 0:
             await cls.cache_object_ids(query, object_ids, redis)
 
         return len(object_ids), limited_object_ids
 
     @classmethod
     async def get_limited_objects(
-        cls, query: QUERY, redis: aioredis.Redis
+        cls, query: QUERY, redis: aioredis.Redis, no_cache: bool
     ) -> tuple[int, list[MODEL]]:
-        count, object_ids = await cls.get_object_ids(query, redis)
+        count, object_ids = await cls.get_object_ids(query, redis, no_cache)
 
         queryset: QuerySet[MODEL] = cls.model.objects
 
@@ -164,9 +164,11 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
 
     @classmethod
     async def get(cls, query: QUERY, redis: aioredis.Redis) -> Page[MODEL]:
+        no_cache: bool = query.get("no_cache", False)  # type: ignore
+
         params = cls.get_params()
 
-        total, objects = await cls.get_limited_objects(query, redis)
+        total, objects = await cls.get_limited_objects(query, redis, no_cache)
 
         return CustomPage.create(items=objects, total=total, params=params)
 

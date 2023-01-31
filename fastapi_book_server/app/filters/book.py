@@ -11,6 +11,7 @@ def get_book_filter(
     allowed_langs: Optional[list[str]] = Query(None),  # type: ignore
     uploaded_gte: Optional[date] = None,
     uploaded_lte: Optional[date] = None,
+    no_cache: bool = False,
 ) -> dict:
     result = {}
 
@@ -25,5 +26,7 @@ def get_book_filter(
 
     if uploaded_lte:
         result["uploaded__lte"] = uploaded_lte
+
+    result["no_cache"] = no_cache
 
     return result
