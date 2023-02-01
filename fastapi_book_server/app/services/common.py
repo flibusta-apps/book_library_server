@@ -267,7 +267,7 @@ class MeiliSearchService(Generic[MODEL], BaseSearchService[MODEL, SearchQuery]):
 
     @classmethod
     async def get_object_ids(
-        cls, query: SearchQuery, redis: aioredis.Redis
+        cls, query: SearchQuery, redis: aioredis.Redis, no_cache: bool
     ) -> tuple[int, list[int]]:
         return await cls._get_object_ids(query)
 
