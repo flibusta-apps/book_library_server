@@ -38,7 +38,7 @@ async def get_books(
     return await BookFilterService.get(book_filter, request.app.state.redis)
 
 
-@book_router.get("/last", response_model=CustomPage[RemoteBook])
+@book_router.get("/last", response_model=RemoteBook)
 async def get_last_book():
     book = (
         await BookDB.objects.select_related(
