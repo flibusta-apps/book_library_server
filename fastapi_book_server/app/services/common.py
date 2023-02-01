@@ -164,7 +164,7 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
 
     @classmethod
     async def get(cls, query: QUERY, redis: aioredis.Redis) -> Page[MODEL]:
-        no_cache: bool = query.get("no_cache", False)  # type: ignore
+        no_cache: bool = query.pop("no_cache", False)  # type: ignore
 
         params = cls.get_params()
 
