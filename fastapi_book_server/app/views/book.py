@@ -38,18 +38,10 @@ async def get_books(
     return await BookFilterService.get(book_filter, request.app.state.redis)
 
 
-@book_router.get("/last", response_model=RemoteBook)
-async def get_last_book():
-    book = (
-        await BookDB.objects.select_related(
-            SELECT_RELATED_FIELDS + DETAIL_SELECT_RELATED_FIELDS
-        )
-        .prefetch_related(PREFETCH_RELATED_FIELDS)
-        .order_by("-id")
-        .first()
-    )
-
-    return book
+@book_router.get("/last", response_model=int)
+async def get_last_book_id():
+    book = await BookDB.objects.order_by("-id").first()
+    return book.id
 
 
 @book_router.get("/random", response_model=BookDetail)
