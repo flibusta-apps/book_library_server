@@ -7,9 +7,10 @@ from app.depends import check_token, get_allowed_langs
 from app.filters.book import get_book_filter
 from app.models import Book as BookDB
 from app.models import BookAnnotation as BookAnnotationDB
-from app.serializers.book import Book, BookDetail, RemoteBook
+from app.serializers.book import Book, BookBaseInfo, BookDetail, RemoteBook
 from app.serializers.book_annotation import BookAnnotation
 from app.services.book import (
+    BookBaseInfoFilterService,
     BookFilterService,
     BookMeiliSearchService,
     GetRandomBookService,
@@ -36,6 +37,15 @@ async def get_books(
     book_filter: dict = Depends(get_book_filter),
 ):
     return await BookFilterService.get(book_filter, request.app.state.redis)
+
+
+@book_router.get(
+    "/base/", response_model=CustomPage[BookBaseInfo], dependencies=[Depends(Params)]
+)
+async def get_base_books_info(
+    request: Request, book_filter: dict = Depends(get_book_filter)
+):
+    return await BookBaseInfoFilterService.get(book_filter, request.app.state.redis)
 
 
 @book_router.get("/last", response_model=int)

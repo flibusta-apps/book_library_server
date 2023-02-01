@@ -34,6 +34,11 @@ class RemoteBook(Book):
     remote_id: int
 
 
+class BookBaseInfo(BaseModel):
+    id: int
+    available_types: list[str]
+
+
 class BookDetail(RemoteBook):
     sequences: list[Sequence]
     genres: list[BookGenre]

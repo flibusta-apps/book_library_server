@@ -30,6 +30,12 @@ class BookTGRMSearchService(TRGMSearchService):
     GET_OBJECT_IDS_QUERY = GET_OBJECT_IDS_QUERY
 
 
+class BookBaseInfoFilterService(BaseFilterService):
+    MODEL_CLASS = BookDB
+    PREFETCH_RELATED = []
+    SELECT_RELATED = []
+
+
 class BookFilterService(BaseFilterService):
     MODEL_CLASS = BookDB
     PREFETCH_RELATED = ["source"]
