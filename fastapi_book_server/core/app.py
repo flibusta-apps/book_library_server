@@ -43,6 +43,8 @@ def start_app() -> FastAPI:
         if database_.is_connected:
             await database_.disconnect()
 
+        await app.state.redis.close()
+
     Instrumentator(
         should_ignore_untemplated=True,
         excluded_handlers=["/docs", "/metrics", "/healthcheck"],
