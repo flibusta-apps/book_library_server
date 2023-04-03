@@ -20,6 +20,11 @@ class EnvConfig(BaseSettings):
     MEILI_HOST: str
     MEILI_MASTER_KEY: str
 
+    PUSH_GETAWAY_ENABLED: bool = True
+    PUSH_GETAWAY_HOST: str = ""
+    PUSH_GETAWAY_JOB: str = "library_server"
+    PUSH_GETAWAY_INTERVAL: int = 15
+
     SENTRY_SDN: str
 
     class Config:
