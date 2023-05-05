@@ -11,6 +11,9 @@ from typing import (
 from fastapi_pagination import Params
 from fastapi_pagination.bases import AbstractParams, BasePage
 from fastapi_pagination.types import GreaterEqualOne, GreaterEqualZero
+import orjson
+
+from app.utils.orjson_default import orjson_dumps
 
 
 @runtime_checkable
@@ -29,9 +32,9 @@ class Page(BasePage[T], Generic[T]):
 
     __params_type__ = Params
 
-    # class Config:
-    #     json_loads = orjson.loads
-    #     json_dumps = orjson_dumps
+    class Config:
+        json_loads = orjson.loads
+        json_dumps = orjson_dumps
 
     @classmethod
     def create(
@@ -49,7 +52,7 @@ class Page(BasePage[T], Generic[T]):
 
         return cls(
             total=total,
-            items=items,
+            items=[item.dict() for item in items],
             page=params.page,
             size=params.size,
             total_pages=pages,
