@@ -12,7 +12,7 @@ from fastapi_pagination import Params
 from fastapi_pagination.bases import AbstractParams, BasePage
 from fastapi_pagination.types import GreaterEqualOne, GreaterEqualZero
 import orjson
-from utils.orjson_default import orjson_dumps
+from app.utils.orjson_default import orjson_dumps
 
 
 @runtime_checkable
