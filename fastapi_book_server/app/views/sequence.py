@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
@@ -8,7 +9,8 @@ from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
 from app.serializers.sequence import Sequence
 from app.services.sequence import GetRandomSequenceService, SequenceMeiliSearchService
-from app.utils.pagination import CustomPage
+from app.utils.pagination import Page
+
 
 sequence_router = APIRouter(
     prefix="/api/v1/sequences",
@@ -17,9 +19,7 @@ sequence_router = APIRouter(
 )
 
 
-@sequence_router.get(
-    "/", response_model=CustomPage[Sequence], dependencies=[Depends(Params)]
-)
+@sequence_router.get("/", response_model=Page[Sequence], dependencies=[Depends(Params)])
 async def get_sequences():
     return await paginate(SequenceDB.objects)
 
@@ -44,7 +44,7 @@ async def get_sequence(id: int):
 
 @sequence_router.get(
     "/{id}/books",
-    response_model=CustomPage[SequenceBook],
+    response_model=Page[SequenceBook],
     dependencies=[Depends(Params)],
 )
 async def get_sequence_books(
@@ -60,7 +60,7 @@ async def get_sequence_books(
 
 @sequence_router.get(
     "/search/{query}",
-    response_model=CustomPage[Sequence],
+    response_model=Page[Sequence],
     dependencies=[Depends(Params)],
 )
 async def search_sequences(

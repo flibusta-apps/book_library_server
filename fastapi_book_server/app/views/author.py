@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
 
@@ -10,7 +11,8 @@ from app.serializers.author import Author, AuthorBook, TranslatedBook
 from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorMeiliSearchService, GetRandomAuthorService
 from app.services.translator import TranslatorMeiliSearchService
-from app.utils.pagination import CustomPage
+from app.utils.pagination import Page
+
 
 author_router = APIRouter(
     prefix="/api/v1/authors",
@@ -23,9 +25,7 @@ PREFETCH_RELATED_FIELDS = ["source"]
 SELECT_RELATED_FIELDS = ["annotations"]
 
 
-@author_router.get(
-    "/", response_model=CustomPage[Author], dependencies=[Depends(Params)]
-)
+@author_router.get("/", response_model=Page[Author], dependencies=[Depends(Params)])
 async def get_authors():
     return await paginate(
         AuthorDB.objects.select_related(SELECT_RELATED_FIELDS).prefetch_related(
@@ -75,7 +75,7 @@ async def get_author_annotation(id: int):
 
 
 @author_router.get(
-    "/{id}/books", response_model=CustomPage[AuthorBook], dependencies=[Depends(Params)]
+    "/{id}/books", response_model=Page[AuthorBook], dependencies=[Depends(Params)]
 )
 async def get_author_books(
     id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
@@ -89,7 +89,7 @@ async def get_author_books(
 
 
 @author_router.get(
-    "/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)]
+    "/search/{query}", response_model=Page[Author], dependencies=[Depends(Params)]
 )
 async def search_authors(
     query: str,
@@ -109,7 +109,7 @@ translator_router = APIRouter(
 )
 
 
-@translator_router.get("/{id}/books", response_model=CustomPage[TranslatedBook])
+@translator_router.get("/{id}/books", response_model=Page[TranslatedBook])
 async def get_translated_books(
     id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
 ):
@@ -125,7 +125,7 @@ async def get_translated_books(
 
 
 @translator_router.get(
-    "/search/{query}", response_model=CustomPage[Author], dependencies=[Depends(Params)]
+    "/search/{query}", response_model=Page[Author], dependencies=[Depends(Params)]
 )
 async def search_translators(
     query: str,

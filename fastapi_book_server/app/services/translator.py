@@ -1,6 +1,7 @@
 from app.models import Author
 from app.services.common import MeiliSearchService, TRGMSearchService
 
+
 GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(
     WITH filtered_authors AS (

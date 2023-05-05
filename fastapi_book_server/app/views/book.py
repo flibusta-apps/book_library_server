@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+
 from fastapi_pagination import Params
 
 from app.depends import check_token, get_allowed_langs
@@ -15,7 +16,8 @@ from app.services.book import (
     BookMeiliSearchService,
     GetRandomBookService,
 )
-from app.utils.pagination import CustomPage
+from app.utils.pagination import Page
+
 
 book_router = APIRouter(
     prefix="/api/v1/books",
@@ -29,9 +31,7 @@ SELECT_RELATED_FIELDS = ["authors", "translators", "annotations"]
 DETAIL_SELECT_RELATED_FIELDS = ["sequences", "genres"]
 
 
-@book_router.get(
-    "/", response_model=CustomPage[RemoteBook], dependencies=[Depends(Params)]
-)
+@book_router.get("/", response_model=Page[RemoteBook], dependencies=[Depends(Params)])
 async def get_books(
     request: Request,
     book_filter: dict = Depends(get_book_filter),
@@ -40,7 +40,7 @@ async def get_books(
 
 
 @book_router.get(
-    "/base/", response_model=CustomPage[BookBaseInfo], dependencies=[Depends(Params)]
+    "/base/", response_model=Page[BookBaseInfo], dependencies=[Depends(Params)]
 )
 async def get_base_books_info(
     request: Request, book_filter: dict = Depends(get_book_filter)
@@ -116,7 +116,7 @@ async def get_book_annotation(id: int):
 
 
 @book_router.get(
-    "/search/{query}", response_model=CustomPage[Book], dependencies=[Depends(Params)]
+    "/search/{query}", response_model=Page[Book], dependencies=[Depends(Params)]
 )
 async def search_books(
     query: str,

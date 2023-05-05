@@ -15,8 +15,9 @@ from redis import asyncio as aioredis
 from sqlalchemy import Table
 
 from app.utils.orjson_default import default as orjson_default
-from app.utils.pagination import CustomPage, Page
+from app.utils.pagination import Page
 from core.config import env_config
+
 
 MODEL = TypeVar("MODEL", bound=Model)
 QUERY = TypeVar("QUERY", bound=TypedDict)
@@ -170,7 +171,7 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
 
         total, objects = await cls.get_limited_objects(query, redis, no_cache)
 
-        return CustomPage.create(items=objects, total=total, params=params)
+        return Page.create(items=objects, total=total, params=params)
 
 
 class SearchQuery(TypedDict):

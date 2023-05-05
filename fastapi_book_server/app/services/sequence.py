@@ -3,6 +3,7 @@ from typing import TypedDict
 from app.models import Sequence
 from app.services.common import GetRandomService, MeiliSearchService, TRGMSearchService
 
+
 GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY (
     WITH filtered_sequences AS (

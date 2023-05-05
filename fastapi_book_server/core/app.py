@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
+
 from fastapi_pagination import add_pagination
 from prometheus_fastapi_instrumentator import Instrumentator
 from redis import asyncio as aioredis
@@ -8,6 +9,7 @@ import sentry_sdk
 from app.views import routers
 from core.config import env_config
 from core.db import database
+
 
 sentry_sdk.init(
     env_config.SENTRY_SDN,

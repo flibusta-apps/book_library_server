@@ -2,18 +2,17 @@ exclude: 'docs|node_modules|migrations|.git|.tox'
 
 repos:
 - repo: https://github.com/ambv/black
-  rev: 22.12.0
+  rev: 23.3.0
   hooks:
     - id: black
       language_version: python3.11
 
 - repo: https://github.com/charliermarsh/ruff-pre-commit
-  rev: 'v0.0.216'
+  rev: 'v0.0.265'
   hooks:
     - id: ruff
-      args: ["--force-exclude"]
 
 - repo: https://github.com/crate-ci/typos
-  rev: v1.13.6
+  rev: typos-dict-v0.9.26
   hooks:
     - id: typos

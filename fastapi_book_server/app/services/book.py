@@ -8,6 +8,7 @@ from app.services.common import (
     TRGMSearchService,
 )
 
+
 GET_OBJECT_IDS_QUERY = """
 SELECT ARRAY(
     WITH filtered_books AS (
