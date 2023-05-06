@@ -43,6 +43,9 @@ async def get_random_author(
         {"allowed_langs": allowed_langs}, request.app.state.redis
     )
 
+    if author_id is None:
+        raise HTTPException(status.HTTP_204_NO_CONTENT)
+
     return (
         await AuthorDB.objects.select_related(SELECT_RELATED_FIELDS)
         .prefetch_related(PREFETCH_RELATED_FIELDS)

@@ -315,7 +315,7 @@ class GetRandomService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
         cls,
         query: QUERY,
         redis: aioredis.Redis,
-    ) -> int:
+    ) -> int | None:
         cached_object_id = await cls._get_random_object_from_cache(query, redis)
 
         if cached_object_id is not None:
@@ -324,6 +324,9 @@ class GetRandomService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
         object_ids = await cls._get_objects_from_db(query)
 
         await cls.cache_object_ids(query, object_ids, redis)
+
+        if len(object_ids):
+            return None
 
         return choice(object_ids)
 

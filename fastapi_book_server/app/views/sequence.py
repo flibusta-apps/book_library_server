@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from fastapi_pagination import Params
 from fastapi_pagination.ext.ormar import paginate
@@ -33,6 +33,9 @@ async def get_random_sequence(
         {"allowed_langs": allowed_langs},
         request.app.state.redis,
     )
+
+    if sequence_id is None:
+        raise HTTPException(status.HTTP_204_NO_CONTENT)
 
     return await SequenceDB.objects.get(id=sequence_id)
 

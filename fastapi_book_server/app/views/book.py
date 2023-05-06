@@ -64,6 +64,9 @@ async def get_random_book(
         {"allowed_langs": allowed_langs, "genre": genre}, request.app.state.redis
     )
 
+    if book_id is None:
+        raise HTTPException(status.HTTP_204_NO_CONTENT)
+
     book = (
         await BookDB.objects.select_related(
             SELECT_RELATED_FIELDS + DETAIL_SELECT_RELATED_FIELDS
