@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from fastapi_pagination import Params
@@ -27,7 +29,7 @@ async def get_sequences():
 @sequence_router.get("/random", response_model=Sequence)
 async def get_random_sequence(
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
 ):
     sequence_id = await GetRandomSequenceService.get_random_id(
         {"allowed_langs": allowed_langs},
@@ -51,7 +53,7 @@ async def get_sequence(id: int):
     dependencies=[Depends(Params)],
 )
 async def get_sequence_books(
-    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
+    id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ):
     return await paginate(
         BookDB.objects.prefetch_related(["source"])
@@ -69,7 +71,7 @@ async def get_sequence_books(
 async def search_sequences(
     query: str,
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
 ):
     return await SequenceMeiliSearchService.get(
         {"query": query, "allowed_langs": allowed_langs},

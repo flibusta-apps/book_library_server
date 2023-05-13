@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from fastapi_pagination import Params
@@ -37,7 +39,7 @@ async def get_authors():
 @author_router.get("/random", response_model=Author)
 async def get_random_author(
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
 ):
     author_id = await GetRandomAuthorService.get_random_id(
         {"allowed_langs": allowed_langs}, request.app.state.redis
@@ -81,7 +83,7 @@ async def get_author_annotation(id: int):
     "/{id}/books", response_model=Page[AuthorBook], dependencies=[Depends(Params)]
 )
 async def get_author_books(
-    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
+    id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ):
     return await paginate(
         BookDB.objects.prefetch_related(["source"])
@@ -97,7 +99,7 @@ async def get_author_books(
 async def search_authors(
     query: str,
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
 ):
     return await AuthorMeiliSearchService.get(
         {"query": query, "allowed_langs": allowed_langs},
@@ -114,7 +116,7 @@ translator_router = APIRouter(
 
 @translator_router.get("/{id}/books", response_model=Page[TranslatedBook])
 async def get_translated_books(
-    id: int, allowed_langs: list[str] = Depends(get_allowed_langs)
+    id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ):
     return await paginate(
         BookDB.objects.prefetch_related(["source"])
@@ -133,7 +135,7 @@ async def get_translated_books(
 async def search_translators(
     query: str,
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
 ):
     return await TranslatorMeiliSearchService.get(
         {"query": query, "allowed_langs": allowed_langs},

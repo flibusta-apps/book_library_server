@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -34,7 +34,7 @@ DETAIL_SELECT_RELATED_FIELDS = ["sequences", "genres"]
 @book_router.get("/", response_model=Page[RemoteBook], dependencies=[Depends(Params)])
 async def get_books(
     request: Request,
-    book_filter: dict = Depends(get_book_filter),
+    book_filter: Annotated[dict, Depends(get_book_filter)],
 ):
     return await BookFilterService.get(book_filter, request.app.state.redis)
 
@@ -43,7 +43,7 @@ async def get_books(
     "/base/", response_model=Page[BookBaseInfo], dependencies=[Depends(Params)]
 )
 async def get_base_books_info(
-    request: Request, book_filter: dict = Depends(get_book_filter)
+    request: Request, book_filter: Annotated[dict, Depends(get_book_filter)]
 ):
     return await BookBaseInfoFilterService.get(book_filter, request.app.state.redis)
 
@@ -57,7 +57,7 @@ async def get_last_book_id():
 @book_router.get("/random", response_model=BookDetail)
 async def get_random_book(
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
     genre: Optional[int] = None,
 ):
     book_id = await GetRandomBookService.get_random_id(
@@ -124,7 +124,7 @@ async def get_book_annotation(id: int):
 async def search_books(
     query: str,
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
 ):
     return await BookMeiliSearchService.get(
         {"query": query, "allowed_langs": allowed_langs},

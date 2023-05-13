@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from fastapi_pagination import Params
@@ -20,7 +22,7 @@ PREFETCH_RELATED_FIELDS = ["source"]
 
 
 @genre_router.get("/", response_model=Page[Genre], dependencies=[Depends(Params)])
-async def get_genres(genre_filter: dict = Depends(get_genre_filter)):
+async def get_genres(genre_filter: Annotated[dict, Depends(get_genre_filter)]):
     return await paginate(
         GenreDB.objects.prefetch_related(PREFETCH_RELATED_FIELDS)
         .filter(**genre_filter)
@@ -53,7 +55,7 @@ async def get_genre(id: int):
 async def search_genres(
     query: str,
     request: Request,
-    allowed_langs: frozenset[str] = Depends(get_allowed_langs),
+    allowed_langs: Annotated[frozenset[str], Depends(get_allowed_langs)],
 ):
     return await GenreMeiliSearchService.get(
         {"query": query, "allowed_langs": allowed_langs},
