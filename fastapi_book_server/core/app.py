@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 
@@ -16,8 +18,23 @@ sentry_sdk.init(
 )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    database_ = app.state.database
+    if not database_.is_connected:
+        await database_.connect()
+
+    yield
+
+    database_ = app.state.database
+    if database_.is_connected:
+        await database_.disconnect()
+
+    await app.state.redis.close()
+
+
 def start_app() -> FastAPI:
-    app = FastAPI(default_response_class=ORJSONResponse)
+    app = FastAPI(default_response_class=ORJSONResponse, lifespan=lifespan)
 
     app.state.database = database
 
@@ -32,20 +49,6 @@ def start_app() -> FastAPI:
         app.include_router(router)
 
     add_pagination(app)
-
-    @app.on_event("startup")
-    async def startup() -> None:
-        database_ = app.state.database
-        if not database_.is_connected:
-            await database_.connect()
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        database_ = app.state.database
-        if database_.is_connected:
-            await database_.disconnect()
-
-        await app.state.redis.close()
 
     Instrumentator(
         should_ignore_untemplated=True,
