@@ -4,4 +4,4 @@ rm -rf prometheus
 mkdir prometheus
 
 alembic -c ./app/alembic.ini upgrade head
-gunicorn -k gunicorn_pushgateway_workers.workers.uvicorn.UvicornWorker main:app --bind 0.0.0.0:8080 --timeout 600
+uvicorn main:app --host 0.0.0.0 --port 8080 --loop uvloop --workers 2
