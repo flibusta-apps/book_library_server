@@ -325,7 +325,7 @@ class GetRandomService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
 
         await cls.cache_object_ids(query, object_ids, redis)
 
-        if len(object_ids):
+        if len(object_ids) == 0:
             return None
 
         return choice(object_ids)
