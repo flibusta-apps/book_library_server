@@ -6,11 +6,11 @@ authors = ["Kurbanov Bulat <kurbanovbul@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.95.1"
+fastapi = "^0.95.2"
 pydantic = "^1.10.4"
 uvicorn = {extras = ["standard"], version = "^0.22.0"}
 ormar = {extras = ["postgresql"], version = "^0.12.1"}
-alembic = "^1.10.4"
+alembic = "^1.11.0"
 fastapi-pagination = {extras = ["ormar"], version = "^0.12.3"}
 orjson = "^3.8.12"
 httpx = "^0.24.0"
