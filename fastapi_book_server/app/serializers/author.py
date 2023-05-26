@@ -3,6 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from app.serializers.sequence import Sequence
+
 
 class Author(BaseModel):
     id: int
@@ -22,6 +24,7 @@ class AuthorBook(BaseModel):
     available_types: list[str]
     uploaded: date
     translators: list[Author]
+    sequences: list[Sequence]
     annotation_exists: bool
 
 
@@ -32,4 +35,5 @@ class TranslatedBook(BaseModel):
     file_type: str
     available_types: list[str]
     authors: list[Author]
+    sequences: list[Sequence]
     annotation_exists: bool

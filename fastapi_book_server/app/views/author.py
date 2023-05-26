@@ -87,7 +87,7 @@ async def get_author_books(
 ):
     return await paginate(
         BookDB.objects.prefetch_related(["source"])
-        .select_related(["annotations", "translators"])
+        .select_related(["annotations", "translators", "sequences"])
         .filter(authors__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("title")
     )
@@ -120,7 +120,7 @@ async def get_translated_books(
 ):
     return await paginate(
         BookDB.objects.prefetch_related(["source"])
-        .select_related(["annotations", "authors"])
+        .select_related(["annotations", "authors", "sequences"])
         .filter(
             translators__id=id,
             lang__in=allowed_langs,
