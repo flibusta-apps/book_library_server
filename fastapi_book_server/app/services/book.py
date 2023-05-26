@@ -92,7 +92,7 @@ class GetRandomBookService(GetRandomService[BookDB, RandomBookServiceQuery]):
 class BookMeiliSearchService(MeiliSearchService):
     MODEL_CLASS = BookDB
     PREFETCH_RELATED = ["source"]
-    SELECT_RELATED = ["authors", "translators", "annotations"]
+    SELECT_RELATED = ["authors", "translators", "annotations", "sequences"]
 
     MS_INDEX_NAME = "books"
     MS_INDEX_LANG_KEY = "lang"

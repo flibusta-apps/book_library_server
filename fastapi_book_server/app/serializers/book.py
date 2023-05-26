@@ -26,6 +26,7 @@ class Book(BaseModel):
     uploaded: date
     authors: list[Author]
     translators: list[Author]
+    sequences: list[Sequence]
     annotation_exists: bool
 
 
@@ -40,7 +41,6 @@ class BookBaseInfo(BaseModel):
 
 
 class BookDetail(RemoteBook):
-    sequences: list[Sequence]
     genres: list[BookGenre]
     is_deleted: bool
     pages: Optional[int]
