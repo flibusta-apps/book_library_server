@@ -16,6 +16,8 @@ class Author(BaseModel):
     last_name: str
     middle_name: Optional[str]
 
+    annotation_exists: bool
+
 
 class Book(BaseModel):
     id: int
