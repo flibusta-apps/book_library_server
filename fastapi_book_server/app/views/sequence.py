@@ -9,7 +9,7 @@ from app.depends import check_token, get_allowed_langs
 from app.models import Book as BookDB
 from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
-from app.serializers.sequence import Sequence
+from app.serializers.sequence import PageWithSequence, Sequence
 from app.services.sequence import GetRandomSequenceService, SequenceMeiliSearchService
 from app.utils.transformer import dict_transformer
 
@@ -49,18 +49,28 @@ async def get_sequence(id: int):
 
 @sequence_router.get(
     "/{id}/books",
-    response_model=Page[SequenceBook],
+    response_model=PageWithSequence,
     dependencies=[Depends(Params)],
 )
 async def get_sequence_books(
     id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ):
-    return await paginate(
+    page: Page[SequenceBook] = await paginate(
         BookDB.objects.prefetch_related(["source"])
         .select_related(["annotations", "authors", "translators"])
         .filter(sequences__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("sequences__booksequences__position"),
         transformer=dict_transformer,
+    )
+
+    sequence = await SequenceDB.objects.get_or_none(id=id)
+
+    return PageWithSequence(
+        items=page.items,
+        total=page.total,
+        page=page.page,
+        size=page.size,
+        sequence=sequence,  # type: ignore
     )
 
 
