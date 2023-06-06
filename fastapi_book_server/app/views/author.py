@@ -106,7 +106,7 @@ async def get_author_books(
         page=page.page,
         size=page.size,
         pages=page.pages,
-        parent_item=author,  # type: ignore
+        parent_item=Author.parse_obj(author.dict()) if author else None,
     )
 
 
@@ -154,7 +154,7 @@ async def get_translated_books(
         page=page.page,
         size=page.size,
         pages=page.pages,
-        parent_item=translator,  # type: ignore
+        parent_item=Author.parse_obj(translator.dict()) if translator else None,
     )
 
 

@@ -45,4 +45,4 @@ class PageWithAuthorBook(Page[AuthorBook]):
 
 
 class PageWithTranslatedBook(Page[TranslatedBook]):
-    parent_item: TranslatedBook | None
+    parent_item: Author | None
