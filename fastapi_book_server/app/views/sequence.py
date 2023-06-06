@@ -70,7 +70,7 @@ async def get_sequence_books(
         total=page.total,
         page=page.page,
         size=page.size,
-        sequence=sequence,  # type: ignore
+        parent_item=sequence,  # type: ignore
     )
 
 

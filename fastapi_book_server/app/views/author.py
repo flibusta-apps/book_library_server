@@ -9,7 +9,11 @@ from app.depends import check_token, get_allowed_langs
 from app.models import Author as AuthorDB
 from app.models import AuthorAnnotation as AuthorAnnotationDB
 from app.models import Book as BookDB
-from app.serializers.author import Author, AuthorBook, TranslatedBook
+from app.serializers.author import (
+    Author,
+    PageWithAuthorBook,
+    PageWithTranslatedBook,
+)
 from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorMeiliSearchService, GetRandomAuthorService
 from app.services.translator import TranslatorMeiliSearchService
@@ -81,17 +85,28 @@ async def get_author_annotation(id: int):
 
 
 @author_router.get(
-    "/{id}/books", response_model=Page[AuthorBook], dependencies=[Depends(Params)]
+    "/{id}/books", response_model=PageWithAuthorBook, dependencies=[Depends(Params)]
 )
 async def get_author_books(
     id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ):
-    return await paginate(
+    page = await paginate(
         BookDB.objects.prefetch_related(["source"])
         .select_related(["annotations", "translators", "sequences"])
         .filter(authors__id=id, lang__in=allowed_langs, is_deleted=False)
         .order_by("title"),
         transformer=dict_transformer,
+    )
+
+    author = await AuthorDB.objects.get_or_none(id=id)
+
+    return PageWithAuthorBook(
+        items=page.items,
+        total=page.total,
+        page=page.page,
+        size=page.size,
+        pages=page.pages,
+        parent_item=author,  # type: ignore
     )
 
 
@@ -116,11 +131,11 @@ translator_router = APIRouter(
 )
 
 
-@translator_router.get("/{id}/books", response_model=Page[TranslatedBook])
+@translator_router.get("/{id}/books", response_model=PageWithTranslatedBook)
 async def get_translated_books(
     id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ):
-    return await paginate(
+    page = await paginate(
         BookDB.objects.prefetch_related(["source"])
         .select_related(["annotations", "authors", "sequences"])
         .filter(
@@ -129,6 +144,17 @@ async def get_translated_books(
             is_deleted=False,
         ),
         transformer=dict_transformer,
+    )
+
+    translator = await AuthorDB.objects.get(id=id)
+
+    return PageWithTranslatedBook(
+        items=page.items,
+        total=page.total,
+        page=page.page,
+        size=page.size,
+        pages=page.pages,
+        parent_item=translator,  # type: ignore
     )
 
 

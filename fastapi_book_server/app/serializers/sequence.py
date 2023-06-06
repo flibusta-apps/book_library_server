@@ -33,4 +33,4 @@ class Book(BaseModel):
 
 
 class PageWithSequence(Page[Book]):
-    sequence: Sequence | None
+    parent_item: Sequence | None

@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Optional
 
+from fastapi_pagination import Page
 from pydantic import BaseModel
 
 from app.serializers.sequence import Sequence
@@ -37,3 +38,11 @@ class TranslatedBook(BaseModel):
     authors: list[Author]
     sequences: list[Sequence]
     annotation_exists: bool
+
+
+class PageWithAuthorBook(Page[AuthorBook]):
+    parent_item: Author | None
+
+
+class PageWithTranslatedBook(Page[TranslatedBook]):
+    parent_item: TranslatedBook | None
