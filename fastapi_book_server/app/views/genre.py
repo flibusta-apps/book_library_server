@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from fastapi_pagination import Params
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.ormar import paginate
 
 from app.depends import check_token, get_allowed_langs
@@ -10,7 +10,6 @@ from app.filters.genre import get_genre_filter
 from app.models import Genre as GenreDB
 from app.serializers.genre import Genre
 from app.services.genre import GenreMeiliSearchService
-from app.utils.pagination import Page
 
 
 genre_router = APIRouter(

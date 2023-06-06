@@ -2,7 +2,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from fastapi_pagination import Params
+from fastapi_pagination import Page, Params
 
 from app.depends import check_token, get_allowed_langs
 from app.filters.book import get_book_filter
@@ -16,7 +16,6 @@ from app.services.book import (
     BookMeiliSearchService,
     GetRandomBookService,
 )
-from app.utils.pagination import Page
 
 
 book_router = APIRouter(

@@ -6,6 +6,7 @@ from random import choice
 from typing import Generic, Optional, TypedDict, TypeVar, Union
 
 from databases import Database
+from fastapi_pagination import Page
 from fastapi_pagination.api import resolve_params
 from fastapi_pagination.bases import AbstractParams, RawParams
 import meilisearch
@@ -15,7 +16,6 @@ from redis import asyncio as aioredis
 from sqlalchemy import Table
 
 from app.utils.orjson_default import default as orjson_default
-from app.utils.pagination import Page
 from core.config import env_config
 
 
@@ -117,6 +117,9 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
             if not await redis.exists(active_key):
                 return None
 
+            assert params.offset
+            assert params.limit
+
             objects_count, objects = await asyncio.gather(
                 redis.llen(key),
                 redis.lrange(key, params.offset, params.offset + params.limit),
@@ -137,6 +140,9 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
             cached_object_ids := await cls.get_cached_ids(query, redis, params)
         ):
             return cached_object_ids
+
+        assert params.limit
+        assert params.offset
 
         object_ids = await cls._get_object_ids(query)
         limited_object_ids = object_ids[params.offset : params.offset + params.limit]

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from fastapi_pagination import Params
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.ormar import paginate
 
 from app.depends import check_token, get_allowed_langs
@@ -11,7 +11,6 @@ from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
 from app.serializers.sequence import Sequence
 from app.services.sequence import GetRandomSequenceService, SequenceMeiliSearchService
-from app.utils.pagination import Page
 
 
 sequence_router = APIRouter(

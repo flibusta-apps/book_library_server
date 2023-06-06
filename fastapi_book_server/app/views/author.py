@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from fastapi_pagination import Params
+from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.ormar import paginate
 
 from app.depends import check_token, get_allowed_langs
@@ -13,7 +13,6 @@ from app.serializers.author import Author, AuthorBook, TranslatedBook
 from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorMeiliSearchService, GetRandomAuthorService
 from app.services.translator import TranslatorMeiliSearchService
-from app.utils.pagination import Page
 
 
 author_router = APIRouter(
