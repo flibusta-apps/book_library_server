@@ -6,6 +6,7 @@ from fastapi_pagination.ext.ormar import paginate
 from app.depends import check_token
 from app.models import Source as SourceDB
 from app.serializers.source import Source
+from app.utils.transformer import dict_transformer
 
 
 source_router = APIRouter(
@@ -17,4 +18,4 @@ source_router = APIRouter(
 
 @source_router.get("", response_model=Page[Source], dependencies=[Depends(Params)])
 async def get_sources():
-    return await paginate(SourceDB.objects)
+    return await paginate(SourceDB.objects, transformer=dict_transformer)

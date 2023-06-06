@@ -6,6 +6,7 @@ from fastapi_pagination.ext.ormar import paginate
 from app.depends import check_token
 from app.models import BookAnnotation as BookAnnotationDB
 from app.serializers.book_annotation import BookAnnotation
+from app.utils.transformer import dict_transformer
 
 
 book_annotation_router = APIRouter(
@@ -19,7 +20,7 @@ book_annotation_router = APIRouter(
     "/", response_model=Page[BookAnnotation], dependencies=[Depends(Params)]
 )
 async def get_book_annotations():
-    return await paginate(BookAnnotationDB.objects)
+    return await paginate(BookAnnotationDB.objects, transformer=dict_transformer)
 
 
 @book_annotation_router.get("/{id}", response_model=BookAnnotation)

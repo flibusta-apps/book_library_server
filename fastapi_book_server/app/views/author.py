@@ -13,6 +13,7 @@ from app.serializers.author import Author, AuthorBook, TranslatedBook
 from app.serializers.author_annotation import AuthorAnnotation
 from app.services.author import AuthorMeiliSearchService, GetRandomAuthorService
 from app.services.translator import TranslatorMeiliSearchService
+from app.utils.transformer import dict_transformer
 
 
 author_router = APIRouter(
@@ -31,7 +32,8 @@ async def get_authors():
     return await paginate(
         AuthorDB.objects.select_related(SELECT_RELATED_FIELDS).prefetch_related(
             PREFETCH_RELATED_FIELDS
-        )
+        ),
+        transformer=dict_transformer,
     )
 
 
@@ -88,7 +90,8 @@ async def get_author_books(
         BookDB.objects.prefetch_related(["source"])
         .select_related(["annotations", "translators", "sequences"])
         .filter(authors__id=id, lang__in=allowed_langs, is_deleted=False)
-        .order_by("title")
+        .order_by("title"),
+        transformer=dict_transformer,
     )
 
 
@@ -124,7 +127,8 @@ async def get_translated_books(
             translators__id=id,
             lang__in=allowed_langs,
             is_deleted=False,
-        )
+        ),
+        transformer=dict_transformer,
     )
 
 

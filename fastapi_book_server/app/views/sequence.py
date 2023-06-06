@@ -11,6 +11,7 @@ from app.models import Sequence as SequenceDB
 from app.serializers.sequence import Book as SequenceBook
 from app.serializers.sequence import Sequence
 from app.services.sequence import GetRandomSequenceService, SequenceMeiliSearchService
+from app.utils.transformer import dict_transformer
 
 
 sequence_router = APIRouter(
@@ -22,7 +23,7 @@ sequence_router = APIRouter(
 
 @sequence_router.get("/", response_model=Page[Sequence], dependencies=[Depends(Params)])
 async def get_sequences():
-    return await paginate(SequenceDB.objects)
+    return await paginate(SequenceDB.objects, transformer=dict_transformer)
 
 
 @sequence_router.get("/random", response_model=Sequence)
@@ -58,7 +59,8 @@ async def get_sequence_books(
         BookDB.objects.prefetch_related(["source"])
         .select_related(["annotations", "authors", "translators"])
         .filter(sequences__id=id, lang__in=allowed_langs, is_deleted=False)
-        .order_by("sequences__booksequences__position")
+        .order_by("sequences__booksequences__position"),
+        transformer=dict_transformer,
     )
 
 

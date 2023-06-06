@@ -10,6 +10,7 @@ from app.filters.genre import get_genre_filter
 from app.models import Genre as GenreDB
 from app.serializers.genre import Genre
 from app.services.genre import GenreMeiliSearchService
+from app.utils.transformer import dict_transformer
 
 
 genre_router = APIRouter(
@@ -25,7 +26,8 @@ async def get_genres(genre_filter: Annotated[dict, Depends(get_genre_filter)]):
     return await paginate(
         GenreDB.objects.prefetch_related(PREFETCH_RELATED_FIELDS)
         .filter(**genre_filter)
-        .order_by("description")
+        .order_by("description"),
+        transformer=dict_transformer,
     )
 
 

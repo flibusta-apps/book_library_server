@@ -6,6 +6,7 @@ from fastapi_pagination.ext.ormar import paginate
 from app.depends import check_token
 from app.models import Translation as TranslationDB
 from app.serializers.translation import Translation
+from app.utils.transformer import dict_transformer
 
 
 translation_router = APIRouter(
@@ -19,4 +20,7 @@ translation_router = APIRouter(
     "/", response_model=Page[Translation], dependencies=[Depends(Params)]
 )
 async def get_translations():
-    return await paginate(TranslationDB.objects.select_related(["book", "author"]))
+    return await paginate(
+        TranslationDB.objects.select_related(["book", "author"]),
+        transformer=dict_transformer,
+    )

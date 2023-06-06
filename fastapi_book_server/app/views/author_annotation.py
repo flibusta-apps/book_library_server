@@ -6,6 +6,7 @@ from fastapi_pagination.ext.ormar import paginate
 from app.depends import check_token
 from app.models import AuthorAnnotation as AuthorAnnotationDB
 from app.serializers.author_annotation import AuthorAnnotation
+from app.utils.transformer import dict_transformer
 
 
 author_annotation_router = APIRouter(
@@ -19,7 +20,7 @@ author_annotation_router = APIRouter(
     "/", response_model=Page[AuthorAnnotation], dependencies=[Depends(Params)]
 )
 async def get_author_annotations():
-    return await paginate(AuthorAnnotationDB.objects)
+    return await paginate(AuthorAnnotationDB.objects, transformer=dict_transformer)
 
 
 @author_annotation_router.get("/{id}", response_model=AuthorAnnotation)
