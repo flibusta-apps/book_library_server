@@ -70,6 +70,7 @@ async def get_sequence_books(
         total=page.total,
         page=page.page,
         size=page.size,
+        pages=page.pages,
         parent_item=Sequence.parse_obj(sequence.dict()) if sequence else None,
     )
 
