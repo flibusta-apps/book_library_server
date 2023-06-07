@@ -84,7 +84,7 @@ async def sequence_available_types(
 ) -> list[str]:
     books = await (
         BookDB.objects.prefetch_related(["source"])
-        .filter(sequence__id=id, lang__in=allowed_langs, is_deleted=False)
+        .filter(sequences__id=id, lang__in=allowed_langs, is_deleted=False)
         .all()
     )
 
