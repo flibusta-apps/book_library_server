@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -110,6 +110,23 @@ async def get_author_books(
     )
 
 
+@author_router.get("/{id}/available_types", response_model=list[str])
+async def get_author_books_available_types(
+    id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
+) -> list[str]:
+    books = await BookDB.objects.filter(
+        authors__id=id, lang__in=allowed_langs, is_deleted=False
+    ).all()
+
+    file_types: set[str] = set()
+
+    for book in books:
+        for file_type in cast(list[str], book.available_types):
+            file_types.add(file_type)
+
+    return list(file_types)
+
+
 @author_router.get(
     "/search/{query}", response_model=Page[Author], dependencies=[Depends(Params)]
 )
@@ -156,6 +173,25 @@ async def get_translated_books(
         pages=page.pages,
         parent_item=Author.parse_obj(translator.dict()) if translator else None,
     )
+
+
+@translator_router.get("/{id}/available_types", response_model=list[str])
+async def get_translator_books_available_types(
+    id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
+) -> list[str]:
+    books = await BookDB.objects.filter(
+        translators__id=id,
+        lang__in=allowed_langs,
+        is_deleted=False,
+    ).all()
+
+    file_types: set[str] = set()
+
+    for book in books:
+        for file_type in cast(list[str], book.available_types):
+            file_types.add(file_type)
+
+    return list(file_types)
 
 
 @translator_router.get(

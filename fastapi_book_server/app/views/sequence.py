@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -73,6 +73,26 @@ async def get_sequence_books(
         pages=page.pages,
         parent_item=Sequence.parse_obj(sequence.dict()) if sequence else None,
     )
+
+
+@sequence_router.get(
+    "/{id}/available_types",
+    response_model=list[str],
+)
+async def sequence_available_types(
+    id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
+) -> list[str]:
+    books = await BookDB.objects.filter(
+        sequence__id=id, lang__in=allowed_langs, is_deleted=False
+    ).all()
+
+    file_types: set[str] = set()
+
+    for book in books:
+        for file_type in cast(list[str], book.available_types):
+            file_types.add(file_type)
+
+    return list(file_types)
 
 
 @sequence_router.get(
