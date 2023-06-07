@@ -82,9 +82,11 @@ async def get_sequence_books(
 async def sequence_available_types(
     id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ) -> list[str]:
-    books = await BookDB.objects.filter(
-        sequence__id=id, lang__in=allowed_langs, is_deleted=False
-    ).all()
+    books = await (
+        BookDB.objects.prefetch_related(["source"])
+        .filter(sequence__id=id, lang__in=allowed_langs, is_deleted=False)
+        .all()
+    )
 
     file_types: set[str] = set()
 
@@ -92,7 +94,7 @@ async def sequence_available_types(
         for file_type in cast(list[str], book.available_types):
             file_types.add(file_type)
 
-    return list(file_types)
+    return sorted(file_types)
 
 
 @sequence_router.get(

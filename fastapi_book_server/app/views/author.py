@@ -114,9 +114,11 @@ async def get_author_books(
 async def get_author_books_available_types(
     id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ) -> list[str]:
-    books = await BookDB.objects.filter(
-        authors__id=id, lang__in=allowed_langs, is_deleted=False
-    ).all()
+    books = await (
+        BookDB.objects.prefetch_related(["source"])
+        .filter(authors__id=id, lang__in=allowed_langs, is_deleted=False)
+        .all()
+    )
 
     file_types: set[str] = set()
 
@@ -124,7 +126,7 @@ async def get_author_books_available_types(
         for file_type in cast(list[str], book.available_types):
             file_types.add(file_type)
 
-    return list(file_types)
+    return sorted(file_types)
 
 
 @author_router.get(
@@ -179,11 +181,15 @@ async def get_translated_books(
 async def get_translator_books_available_types(
     id: int, allowed_langs: Annotated[list[str], Depends(get_allowed_langs)]
 ) -> list[str]:
-    books = await BookDB.objects.filter(
-        translators__id=id,
-        lang__in=allowed_langs,
-        is_deleted=False,
-    ).all()
+    books = await (
+        BookDB.objects.prefetch_related(["source"])
+        .filter(
+            translators__id=id,
+            lang__in=allowed_langs,
+            is_deleted=False,
+        )
+        .all()
+    )
 
     file_types: set[str] = set()
 
@@ -191,7 +197,7 @@ async def get_translator_books_available_types(
         for file_type in cast(list[str], book.available_types):
             file_types.add(file_type)
 
-    return list(file_types)
+    return sorted(file_types)
 
 
 @translator_router.get(
