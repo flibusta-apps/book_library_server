@@ -141,8 +141,8 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
         ):
             return cached_object_ids
 
-        assert params.limit
-        assert params.offset
+        assert params.limit is not None
+        assert params.offset is not None
 
         object_ids = await cls._get_object_ids(query)
         limited_object_ids = object_ids[params.offset : params.offset + params.limit]
