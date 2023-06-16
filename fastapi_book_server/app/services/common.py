@@ -117,8 +117,8 @@ class BaseSearchService(Generic[MODEL, QUERY], BaseService[MODEL, QUERY]):
             if not await redis.exists(active_key):
                 return None
 
-            assert params.offset
-            assert params.limit
+            assert params.offset is not None
+            assert params.limit is not None
 
             objects_count, objects = await asyncio.gather(
                 redis.llen(key),
