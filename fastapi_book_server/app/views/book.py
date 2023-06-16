@@ -109,7 +109,7 @@ async def get_remote_book(source_id: int, remote_id: int):
 
 @book_router.get("/{id}/annotation", response_model=BookAnnotation)
 async def get_book_annotation(id: int):
-    annotation = await BookAnnotationDB.objects.get(book__id=id)
+    annotation = await BookAnnotationDB.objects.get_or_none(book__id=id)
 
     if annotation is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND)
