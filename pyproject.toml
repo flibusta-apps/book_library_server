@@ -6,20 +6,20 @@ authors = ["Kurbanov Bulat <kurbanovbul@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.97.0"
+fastapi = "^0.101.0"
 pydantic = "^1.10.4"
-uvicorn = {extras = ["standard"], version = "^0.22.0"}
-ormar = {extras = ["postgresql"], version = "^0.12.1"}
-alembic = "^1.11.1"
-fastapi-pagination = {extras = ["ormar"], version = "^0.12.4"}
-orjson = "^3.9.1"
+uvicorn = {extras = ["standard"], version = "^0.23.2"}
+ormar = {extras = ["postgresql"], version = "^0.12.2"}
+alembic = "^1.11.2"
+fastapi-pagination = {extras = ["ormar"], version = "^0.12.7"}
+orjson = "^3.9.4"
 httpx = "^0.24.1"
-meilisearch = "^0.28.0"
-prometheus-fastapi-instrumentator = "^6.0.0"
+meilisearch = "^0.28.2"
+prometheus-fastapi-instrumentator = "^6.1.0"
 uvloop = "^0.17.0"
-sentry-sdk = "^1.25.1"
-redis = {extras = ["hiredis"], version = "^4.5.5"}
-gunicorn = "^20.1.0"
+sentry-sdk = "^1.29.2"
+redis = {extras = ["hiredis"], version = "^4.6.0"}
+gunicorn = "^21.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.21.0"
