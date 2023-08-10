@@ -1,7 +1,4 @@
+/target
+
+.env
 .vscode
-.idea
-.ruff_cache
-
-__pycache__
-
-venv
