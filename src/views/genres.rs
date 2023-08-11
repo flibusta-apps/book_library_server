@@ -69,7 +69,10 @@ pub async fn get_genre_metas(
         metas.insert(genre.meta.clone());
     }
 
-    Json::<Vec<String>>(metas.into_iter().collect())
+    let mut metas: Vec<String> = metas.into_iter().collect();
+    metas.sort();
+
+    Json::<Vec<String>>(metas)
 }
 
 
