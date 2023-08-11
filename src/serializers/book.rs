@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use serde::{Serialize, Deserialize};
 
 use crate::prisma::book::{self};
@@ -6,12 +6,22 @@ use crate::prisma::book::{self};
 use super::{source::Source, utils::{get_available_types, get_translators, get_sequences, get_authors, get_genres}, author::Author, sequence::Sequence, genre::Genre};
 
 
+fn default_langs() -> Vec<String> {
+    vec![
+        "ru".to_string(),
+        "be".to_string(),
+        "uk".to_string()
+    ]
+}
+
+
 #[derive(Deserialize)]
 pub struct BookFilter {
+    #[serde(default = "default_langs")]
     pub allowed_langs: Vec<String>,
     pub is_deleted: Option<bool>,
-    pub uploaded_gte: Option<DateTime<Utc>>,
-    pub uploaded_lte: Option<DateTime<Utc>>,
+    pub uploaded_gte: Option<NaiveDate>,
+    pub uploaded_lte: Option<NaiveDate>,
     pub id_gte: Option<i32>,
     pub id_lte: Option<i32>,
 }
@@ -39,13 +49,13 @@ impl BookFilter {
 
         if let Some(uploaded_gte) = self.uploaded_gte {
             result.push(
-                book::uploaded::gte(uploaded_gte.into())
+                book::uploaded::gte(NaiveDateTime::new(uploaded_gte, NaiveTime::default()).and_utc().into())
             );
         };
 
         if let Some(uploaded_lte) = self.uploaded_lte {
             result.push(
-                book::uploaded::lte(uploaded_lte.into())
+                book::uploaded::lte(NaiveDateTime::new(uploaded_lte, NaiveTime::default()).and_utc().into())
             );
         };
 
