@@ -33,6 +33,7 @@ async fn get_translated_books(
     let books_count = db
         .book()
         .count(vec![
+            book::is_deleted::equals(false),
             book::translations::some(vec![
                 translator::author_id::equals(translator_id)
             ]),
@@ -45,6 +46,7 @@ async fn get_translated_books(
     let books = db
         .book()
         .find_many(vec![
+            book::is_deleted::equals(false),
             book::translations::some(vec![
                 translator::author_id::equals(translator_id)
             ]),
@@ -97,6 +99,7 @@ async fn get_translated_books_available_types(
     let books = db
         .book()
         .find_many(vec![
+            book::is_deleted::equals(false),
             book::translations::some(vec![
                 translator::author_id::equals(translator_id)
             ]),

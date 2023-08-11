@@ -148,7 +148,7 @@ async fn get_author_books(
     let author = db
         .author()
         .find_unique(
-            author::id::equals(author_id)
+            author::id::equals(author_id),
         )
         .with(
             author::author_annotation::fetch()
@@ -165,6 +165,7 @@ async fn get_author_books(
     let books_count = db
         .book()
         .count(vec![
+            book::is_deleted::equals(false),
             book::book_authors::some(vec![
                 book_author::author_id::equals(author_id)
             ]),
@@ -177,6 +178,7 @@ async fn get_author_books(
     let books = db
         .book()
         .find_many(vec![
+            book::is_deleted::equals(false),
             book::book_authors::some(vec![
                 book_author::author_id::equals(author_id)
             ]),
@@ -229,6 +231,7 @@ async fn get_author_books_available_types(
     let books = db
         .book()
         .find_many(vec![
+            book::is_deleted::equals(false),
             book::book_authors::some(vec![
                 book_author::author_id::equals(author_id)
             ]),

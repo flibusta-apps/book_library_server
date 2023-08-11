@@ -137,6 +137,7 @@ async fn get_sequence_available_types(
     let books = db
         .book()
         .find_many(vec![
+            book::is_deleted::equals(false),
             book::book_sequences::some(vec![
                 book_sequence::sequence_id::equals(sequence_id)
             ]),
@@ -184,6 +185,7 @@ async fn get_sequence_books(
     let books_count = db
         .book()
         .count(vec![
+            book::is_deleted::equals(false),
             book::book_sequences::some(vec![
                 book_sequence::sequence_id::equals(sequence_id)
             ]),
@@ -196,6 +198,7 @@ async fn get_sequence_books(
     let books = db
         .book()
         .find_many(vec![
+            book::is_deleted::equals(false),
             book::book_sequences::some(vec![
                 book_sequence::sequence_id::equals(sequence_id)
             ]),
