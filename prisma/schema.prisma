@@ -1,0 +1,165 @@
+generator client {
+  provider = "cargo prisma"
+  output   = "../src/prisma.rs"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AuthorAnnotation {
+  id        Int     @id @default(autoincrement())
+  author_id Int     @unique @map("author")
+  title     String  @db.VarChar(256)
+  text      String
+  file      String? @db.VarChar(256)
+  author    Author  @relation(fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_author_annotations_authors_id_author")
+
+  @@map("author_annotations")
+}
+
+model Author {
+  id                Int               @id @default(autoincrement())
+  source_id         Int               @map("source") @db.SmallInt
+  remote_id         Int
+  first_name        String            @db.VarChar(256)
+  last_name         String            @db.VarChar(256)
+  middle_name       String?           @db.VarChar(256)
+  source            Source            @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_authors_sources_id_source")
+  author_annotation AuthorAnnotation?
+  book_authors      BookAuthor[]
+  translations      Translator[]
+
+  @@unique([source_id, remote_id], map: "uc_authors_source_remote_id")
+  @@index([last_name(ops: raw("gin_trgm_ops"))], map: "tgrm_authors_l", type: Gin)
+  @@map("authors")
+}
+
+model BookAnnotation {
+  id      Int     @id @default(autoincrement())
+  book_id Int     @unique @map("book")
+  title   String  @db.VarChar(256)
+  text    String
+  file    String? @db.VarChar(256)
+  book    Book    @relation(fields: [book_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_book_annotations_books_id_book")
+
+  @@map("book_annotations")
+}
+
+model BookAuthor {
+  id        Int    @id @default(autoincrement())
+  author_id Int    @map("author")
+  book_id   Int    @map("book")
+  author    Author @relation(fields: [author_id], references: [id], onDelete: Cascade, map: "fk_book_authors_authors_author_id")
+  book      Book   @relation(fields: [book_id], references: [id], onDelete: Cascade, map: "fk_book_authors_books_book_id")
+
+  @@unique([book_id, author_id], map: "uc_book_authors_book_author")
+  @@index([author_id], map: "book_authors_author")
+  @@index([book_id], map: "book_authors_book")
+  @@map("book_authors")
+}
+
+model BookGenre {
+  id       Int   @id @default(autoincrement())
+  genre_id Int   @map("genre")
+  book_id  Int   @map("book")
+  book     Book  @relation(fields: [book_id], references: [id], onDelete: Cascade, map: "fk_book_genres_books_book_id")
+  genre    Genre @relation(fields: [genre_id], references: [id], onDelete: Cascade, map: "fk_book_genres_genres_genre_id")
+
+  @@unique([book_id, genre_id], map: "uc_book_genres_book_genre")
+  @@index([book_id], map: "book_genres_book")
+  @@index([genre_id], map: "book_genres_genre")
+  @@map("book_genres")
+}
+
+model BookSequence {
+  id          Int      @id @default(autoincrement())
+  position    Int      @db.SmallInt
+  sequence_id Int      @map("sequence")
+  book_id     Int      @map("book")
+  book        Book     @relation(fields: [book_id], references: [id], onDelete: Cascade, map: "fk_book_sequences_books_book_id")
+  sequence    Sequence @relation(fields: [sequence_id], references: [id], onDelete: Cascade, map: "fk_book_sequences_sequences_sequence_id")
+
+  @@unique([book_id, sequence_id], map: "uc_book_sequences_book_sequence")
+  @@index([book_id], map: "book_sequences_book")
+  @@index([sequence_id], map: "book_sequences_sequence")
+  @@map("book_sequences")
+}
+
+model Book {
+  id              Int             @id @default(autoincrement())
+  source_id       Int             @map("source") @db.SmallInt
+  remote_id       Int
+  title           String          @db.VarChar(256)
+  lang            String          @db.VarChar(3)
+  file_type       String          @db.VarChar(4)
+  uploaded        DateTime        @db.Date
+  is_deleted      Boolean         @default(false)
+  pages           Int?
+  source          Source          @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_books_sources_id_source")
+  book_annotation BookAnnotation?
+  book_authors    BookAuthor[]
+  book_genres     BookGenre[]
+  book_sequences  BookSequence[]
+  translations    Translator[]
+
+  @@unique([source_id, remote_id], map: "uc_books_source_remote_id")
+  @@index([file_type], map: "ix_books_file_type")
+  @@index([title], map: "ix_books_title")
+  @@index([title(ops: raw("gin_trgm_ops"))], map: "trgm_books_title", type: Gin)
+  @@map("books")
+}
+
+model Genre {
+  id          Int         @id @default(autoincrement())
+  source_id   Int         @map("source") @db.SmallInt
+  remote_id   Int
+  code        String      @db.VarChar(45)
+  description String      @db.VarChar(99)
+  meta        String      @db.VarChar(45)
+  source      Source      @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_genres_sources_id_source")
+  book_genres BookGenre[]
+
+  @@unique([source_id, remote_id], map: "uc_genres_source_remote_id")
+  @@map("genres")
+}
+
+model Sequence {
+  id             Int            @id @default(autoincrement())
+  source_id      Int            @map("source") @db.SmallInt
+  remote_id      Int
+  name           String         @db.VarChar(256)
+  source         Source         @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_sequences_sources_id_source")
+  book_sequences BookSequence[]
+
+  @@unique([source_id, remote_id], map: "uc_sequences_source_remote_id")
+  @@index([name], map: "ix_sequences_name")
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "tgrm_sequences_name", type: Gin)
+  @@map("sequences")
+}
+
+model Source {
+  id        Int        @id @default(autoincrement()) @db.SmallInt
+  name      String     @unique @db.VarChar(32)
+  authors   Author[]
+  books     Book[]
+  genres    Genre[]
+  sequences Sequence[]
+
+  @@map("sources")
+}
+
+model Translator {
+  id        Int    @id @default(autoincrement())
+  position  Int    @db.SmallInt
+  author_id Int    @map("author")
+  book_id   Int    @map("book")
+  author    Author @relation(fields: [author_id], references: [id], onDelete: Cascade, map: "fk_translations_authors_author_id")
+  book      Book   @relation(fields: [book_id], references: [id], onDelete: Cascade, map: "fk_translations_books_book_id")
+
+  @@unique([book_id, author_id], map: "uc_translations_book_author")
+  @@index([author_id], map: "translations_author")
+  @@index([book_id], map: "translations_book")
+  @@map("translations")
+}
