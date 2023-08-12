@@ -32,7 +32,6 @@ model Author {
   translations      Translator[]
 
   @@unique([source_id, remote_id], map: "uc_authors_source_remote_id")
-  @@index([last_name(ops: raw("gin_trgm_ops"))], map: "tgrm_authors_l", type: Gin)
   @@map("authors")
 }
 
@@ -106,8 +105,7 @@ model Book {
 
   @@unique([source_id, remote_id], map: "uc_books_source_remote_id")
   @@index([file_type], map: "ix_books_file_type")
-  @@index([title], map: "ix_books_title")
-  @@index([title(ops: raw("gin_trgm_ops"))], map: "trgm_books_title", type: Gin)
+  @@index([uploaded], map: "ix_books_uploaded")
   @@map("books")
 }
 
@@ -134,8 +132,6 @@ model Sequence {
   book_sequences BookSequence[]
 
   @@unique([source_id, remote_id], map: "uc_sequences_source_remote_id")
-  @@index([name], map: "ix_sequences_name")
-  @@index([name(ops: raw("gin_trgm_ops"))], map: "tgrm_sequences_name", type: Gin)
   @@map("sequences")
 }
 
