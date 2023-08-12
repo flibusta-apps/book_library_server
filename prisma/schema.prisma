@@ -16,6 +16,7 @@ model AuthorAnnotation {
   file      String? @db.VarChar(256)
   author    Author  @relation(fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_author_annotations_authors_id_author")
 
+  @@index([author_id], map: "author_annotation_author_id")
   @@map("author_annotations")
 }
 
@@ -43,6 +44,7 @@ model BookAnnotation {
   file    String? @db.VarChar(256)
   book    Book    @relation(fields: [book_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_book_annotations_books_id_book")
 
+  @@index([book_id], map: "book_annotation_book_id")
   @@map("book_annotations")
 }
 
