@@ -30,28 +30,24 @@ async fn get_translated_books(
         None => return StatusCode::NOT_FOUND.into_response(),
     };
 
+    let books_filter = vec![
+        book::is_deleted::equals(false),
+        book::translations::some(vec![
+            translator::author_id::equals(translator_id)
+        ]),
+        book::lang::in_vec(allowed_langs.clone())
+    ];
+
     let books_count = db
         .book()
-        .count(vec![
-            book::is_deleted::equals(false),
-            book::translations::some(vec![
-                translator::author_id::equals(translator_id)
-            ]),
-            book::lang::in_vec(allowed_langs.clone())
-        ])
+        .count(books_filter.clone())
         .exec()
         .await
         .unwrap();
 
     let books = db
         .book()
-        .find_many(vec![
-            book::is_deleted::equals(false),
-            book::translations::some(vec![
-                translator::author_id::equals(translator_id)
-            ]),
-            book::lang::in_vec(allowed_langs)
-        ])
+        .find_many(books_filter)
         .with(
             book::source::fetch()
         )

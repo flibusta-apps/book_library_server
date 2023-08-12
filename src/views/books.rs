@@ -1,10 +1,9 @@
 use axum::{Router, routing::get, extract::{Query, Path}, Json, response::IntoResponse, http::StatusCode};
 use prisma_client_rust::Direction;
-use rand::Rng;
 
 use crate::{serializers::{book::{BookFilter, RemoteBook, BaseBook, DetailBook, RandomBookFilter, Book}, pagination::{Pagination, Page}, book_annotation::BookAnnotation, allowed_langs::AllowedLangs}, prisma::{book::{self}, book_author, author, translator, book_sequence, book_genre, book_annotation, genre}, meilisearch::{get_meili_client, BookMeili}};
 
-use super::Database;
+use super::{Database, common::get_random_item::get_random_item};
 
 
 pub async fn get_books(
@@ -110,44 +109,28 @@ pub async fn get_random_book(
     db: Database,
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<RandomBookFilter>,
 ) -> impl IntoResponse {
-    let client = get_meili_client();
+    let book_id = {
+        let client = get_meili_client();
 
-    let authors_index = client.index("books");
+        let authors_index = client.index("books");
 
-    let filter = {
-        let langs_filter = format!(
-            "lang IN [{}]",
-            book_filter.allowed_langs.join(", ")
-        );
-        let genre_filter = match book_filter.genre {
-            Some(v) => format!(" AND genres = {v}"),
-            None => "".to_string(),
+        let filter = {
+            let langs_filter = format!(
+                "lang IN [{}]",
+                book_filter.allowed_langs.join(", ")
+            );
+            let genre_filter = match book_filter.genre {
+                Some(v) => format!(" AND genres = {v}"),
+                None => "".to_string(),
+            };
+
+            format!("{langs_filter}{genre_filter}")
         };
 
-        format!("{langs_filter}{genre_filter}")
-    };
-
-    let result = authors_index
-        .search()
-        .with_filter(&filter)
-        .execute::<BookMeili>()
-        .await
-        .unwrap();
-
-    let book_id = {
-        let offset: usize = rand::thread_rng().gen_range(0..result.estimated_total_hits.unwrap().try_into().unwrap());
-
-        let result = authors_index
-            .search()
-            .with_limit(1)
-            .with_offset(offset)
-            .execute::<BookMeili>()
-            .await
-            .unwrap();
-
-        let book = &result.hits.get(0).unwrap().result;
-
-        book.id
+        get_random_item::<BookMeili>(
+            authors_index,
+            filter
+        ).await
     };
 
     let book = db

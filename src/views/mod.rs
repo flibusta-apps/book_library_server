@@ -15,6 +15,7 @@ pub mod books;
 pub mod genres;
 pub mod sequences;
 pub mod translators;
+pub mod common;
 
 
 pub type Database = Extension<Arc<PrismaClient>>;

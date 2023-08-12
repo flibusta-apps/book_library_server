@@ -2,11 +2,9 @@ use std::collections::HashSet;
 
 use axum::{Router, extract::{Query, Path}, Json, response::IntoResponse, routing::get, http::StatusCode};
 
-use rand::Rng;
-
 use crate::{prisma::{author, author_annotation::{self}, book, book_author, translator, book_sequence}, serializers::{pagination::{Pagination, Page, PageWithParent}, author::{Author, AuthorBook}, author_annotation::AuthorAnnotation, allowed_langs::AllowedLangs}, meilisearch::{get_meili_client, AuthorMeili}};
 
-use super::Database;
+use super::{Database, common::get_random_item::get_random_item};
 
 
 async fn get_authors(
@@ -47,36 +45,20 @@ async fn get_random_author(
     db: Database,
     axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<AllowedLangs>
 ) -> impl IntoResponse {
-    let client = get_meili_client();
-
-    let authors_index = client.index("authors");
-
-    let filter = format!(
-        "author_langs IN [{}]",
-        allowed_langs.join(", ")
-    );
-
-    let result = authors_index
-        .search()
-        .with_filter(&filter)
-        .execute::<AuthorMeili>()
-        .await
-        .unwrap();
-
     let author_id = {
-        let offset: usize = rand::thread_rng().gen_range(0..result.estimated_total_hits.unwrap().try_into().unwrap());
+        let client = get_meili_client();
 
-        let result = authors_index
-            .search()
-            .with_limit(1)
-            .with_offset(offset)
-            .execute::<AuthorMeili>()
-            .await
-            .unwrap();
+        let authors_index = client.index("authors");
 
-        let author = &result.hits.get(0).unwrap().result;
+        let filter = format!(
+            "author_langs IN [{}]",
+            allowed_langs.join(", ")
+        );
 
-        author.id
+        get_random_item::<AuthorMeili>(
+            authors_index,
+            filter
+        ).await
     };
 
     let author = db
@@ -162,28 +144,24 @@ async fn get_author_books(
         None => return StatusCode::NOT_FOUND.into_response(),
     };
 
+    let books_filter = vec![
+        book::is_deleted::equals(false),
+        book::book_authors::some(vec![
+            book_author::author_id::equals(author_id)
+        ]),
+        book::lang::in_vec(allowed_langs.clone())
+    ];
+
     let books_count = db
         .book()
-        .count(vec![
-            book::is_deleted::equals(false),
-            book::book_authors::some(vec![
-                book_author::author_id::equals(author_id)
-            ]),
-            book::lang::in_vec(allowed_langs.clone())
-        ])
+        .count(books_filter.clone())
         .exec()
         .await
         .unwrap();
 
     let books = db
         .book()
-        .find_many(vec![
-            book::is_deleted::equals(false),
-            book::book_authors::some(vec![
-                book_author::author_id::equals(author_id)
-            ]),
-            book::lang::in_vec(allowed_langs)
-        ])
+        .find_many(books_filter)
         .with(
             book::source::fetch()
         )

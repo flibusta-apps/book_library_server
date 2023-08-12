@@ -1,47 +1,30 @@
 use std::collections::HashSet;
 
 use axum::{Router, routing::get, extract::{Path, Query}, http::StatusCode, response::IntoResponse, Json};
-use rand::Rng;
 
 use crate::{prisma::{sequence, book_sequence, book, book_author, author, translator}, serializers::{sequence::{Sequence, SequenceBook}, allowed_langs::AllowedLangs, pagination::{PageWithParent, Pagination, Page}}, meilisearch::{get_meili_client, SequenceMeili}};
 
-use super::Database;
+use super::{Database, common::get_random_item::get_random_item};
 
 
 async fn get_random_sequence(
     db: Database,
     axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<AllowedLangs>
 ) -> impl IntoResponse {
-    let client = get_meili_client();
-
-    let authors_index = client.index("sequences");
-
-    let filter = format!(
-        "langs IN [{}]",
-        allowed_langs.join(", ")
-    );
-
-    let result = authors_index
-        .search()
-        .with_filter(&filter)
-        .execute::<SequenceMeili>()
-        .await
-        .unwrap();
-
     let sequence_id = {
-        let offset: usize = rand::thread_rng().gen_range(0..result.estimated_total_hits.unwrap().try_into().unwrap());
+        let client = get_meili_client();
 
-        let result = authors_index
-            .search()
-            .with_limit(1)
-            .with_offset(offset)
-            .execute::<SequenceMeili>()
-            .await
-            .unwrap();
+        let authors_index = client.index("sequences");
 
-        let sequence = &result.hits.get(0).unwrap().result;
+        let filter = format!(
+            "langs IN [{}]",
+            allowed_langs.join(", ")
+        );
 
-        sequence.id
+        get_random_item::<SequenceMeili>(
+            authors_index,
+            filter
+        ).await
     };
 
     let sequence = db
@@ -182,28 +165,24 @@ async fn get_sequence_books(
         None => return StatusCode::NOT_FOUND.into_response(),
     };
 
+    let books_filter = vec![
+        book::is_deleted::equals(false),
+        book::book_sequences::some(vec![
+            book_sequence::sequence_id::equals(sequence_id)
+        ]),
+        book::lang::in_vec(allowed_langs.clone())
+    ];
+
     let books_count = db
         .book()
-        .count(vec![
-            book::is_deleted::equals(false),
-            book::book_sequences::some(vec![
-                book_sequence::sequence_id::equals(sequence_id)
-            ]),
-            book::lang::in_vec(allowed_langs.clone())
-        ])
+        .count(books_filter.clone())
         .exec()
         .await
         .unwrap();
 
     let books = db
         .book()
-        .find_many(vec![
-            book::is_deleted::equals(false),
-            book::book_sequences::some(vec![
-                book_sequence::sequence_id::equals(sequence_id)
-            ]),
-            book::lang::in_vec(allowed_langs.clone())
-        ])
+        .find_many(books_filter)
         .with(
             book::source::fetch()
         )
