@@ -13,7 +13,7 @@ members = [
 [dependencies]
 once_cell = "1.18.0"
 
-prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.8", features = ["postgresql"] }
+prisma-client-rust = { git = "https://github.com/Brendonovich/prisma-client-rust", tag = "0.6.9", default-features = false, features = ["postgresql"] }
 
 tokio = { version = "1.28.2", features = ["full"] }
 
