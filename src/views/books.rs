@@ -380,7 +380,7 @@ pub async fn get_book_annotation(
     db: Database,
     Path(book_id): Path<i32>,
 ) -> impl IntoResponse {
-    let book_annotaion = db
+    let book_annotation = db
         .book_annotation()
         .find_unique(
             book_annotation::book_id::equals(book_id)
@@ -389,7 +389,7 @@ pub async fn get_book_annotation(
         .await
         .unwrap();
 
-    match book_annotaion {
+    match book_annotation {
         Some(book_annotation) => Json::<BookAnnotation>(book_annotation.into()).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
