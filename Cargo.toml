@@ -22,7 +22,7 @@ tracing-subscriber = { version = "0.3.17", features = ["env-filter"]}
 tower-http = { version = "0.4.4", features = ["trace"] }
 
 axum = { version = "0.6.20", features = ["json"] }
-axum-extra = { version ="0.7.7", features = ["query"] }
+axum-extra = { version ="0.8.0", features = ["query"] }
 axum-prometheus = "0.4.0"
 serde = { version = "1.0.188", features = ["derive"] }
 
@@ -32,4 +32,4 @@ meilisearch-sdk = "0.24.2"
 
 rand = "0.8.5"
 
-chrono = "0.4.30"
+chrono = "0.4.31"
