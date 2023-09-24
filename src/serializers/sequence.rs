@@ -1,9 +1,11 @@
 use serde::Serialize;
 
-use crate::prisma::{sequence, book};
+use crate::prisma::{book, sequence};
 
-use super::{author::Author, utils::{get_available_types, get_authors, get_translators}};
-
+use super::{
+    author::Author,
+    utils::{get_authors, get_available_types, get_translators},
+};
 
 #[derive(Serialize)]
 pub struct Sequence {

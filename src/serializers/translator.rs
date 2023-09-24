@@ -2,7 +2,11 @@ use serde::Serialize;
 
 use crate::prisma::book;
 
-use super::{author::Author, sequence::Sequence, utils::{get_available_types, get_authors, get_sequences}};
+use super::{
+    author::Author,
+    sequence::Sequence,
+    utils::{get_authors, get_available_types, get_sequences},
+};
 
 #[derive(Serialize)]
 pub struct TranslatorBook {

@@ -16,7 +16,7 @@ pub struct Config {
     pub meili_host: String,
     pub meili_master_key: String,
 
-    pub sentry_dsn: String
+    pub sentry_dsn: String,
 }
 
 impl Config {
@@ -33,11 +33,9 @@ impl Config {
             meili_host: get_env("MEILI_HOST"),
             meili_master_key: get_env("MEILI_MASTER_KEY"),
 
-            sentry_dsn: get_env("SENTRY_DSN")
+            sentry_dsn: get_env("SENTRY_DSN"),
         }
     }
 }
 
-pub static CONFIG: Lazy<Config> = Lazy::new(|| {
-    Config::load()
-});
+pub static CONFIG: Lazy<Config> = Lazy::new(Config::load);

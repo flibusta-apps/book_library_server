@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 fn default_page() -> i64 {
     1
 }
@@ -14,9 +13,8 @@ pub struct Pagination {
     #[serde(default = "default_page")]
     pub page: i64,
     #[serde(default = "default_size")]
-    pub size: i64
+    pub size: i64,
 }
-
 
 #[derive(Serialize)]
 pub struct Page<T> {
@@ -24,7 +22,7 @@ pub struct Page<T> {
     pub total: i64,
     pub page: i64,
     pub size: i64,
-    pub pages: i64
+    pub pages: i64,
 }
 
 #[derive(Serialize)]
@@ -34,7 +32,7 @@ pub struct PageWithParent<T, P> {
     pub page: i64,
     pub size: i64,
     pub pages: i64,
-    pub parent_item: P
+    pub parent_item: P,
 }
 
 impl<T> Page<T> {
@@ -44,7 +42,7 @@ impl<T> Page<T> {
             total,
             page: pagination.page,
             size: pagination.size,
-            pages: (total + pagination.size - 1) / pagination.size
+            pages: (total + pagination.size - 1) / pagination.size,
         }
     }
 }
@@ -57,7 +55,7 @@ impl<T, P> PageWithParent<T, P> {
             page: pagination.page,
             size: pagination.size,
             pages: (total + pagination.size - 1) / pagination.size,
-            parent_item
+            parent_item,
         }
     }
 }

@@ -1,26 +1,42 @@
 use std::collections::HashSet;
 
-use axum::{Router, routing::get, extract::{Path, Query}, response::IntoResponse, Json, http::StatusCode};
+use axum::{
+    extract::{Path, Query},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::get,
+    Json, Router,
+};
 
-use crate::{serializers::{pagination::{Pagination, Page, PageWithParent}, author::Author, translator::TranslatorBook, allowed_langs::AllowedLangs}, meilisearch::{get_meili_client, AuthorMeili}, prisma::{author, book::{self}, translator, book_author, book_sequence}};
+use crate::{
+    meilisearch::{get_meili_client, AuthorMeili},
+    prisma::{
+        author,
+        book::{self},
+        book_author, book_sequence, translator,
+    },
+    serializers::{
+        allowed_langs::AllowedLangs,
+        author::Author,
+        pagination::{Page, PageWithParent, Pagination},
+        translator::TranslatorBook,
+    },
+};
 
 use super::Database;
-
 
 async fn get_translated_books(
     db: Database,
     Path(translator_id): Path<i32>,
-    axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<AllowedLangs>,
-    pagination: Query<Pagination>
+    axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
+        AllowedLangs,
+    >,
+    pagination: Query<Pagination>,
 ) -> impl IntoResponse {
     let translator = db
         .author()
-        .find_unique(
-            author::id::equals(translator_id)
-        )
-        .with(
-            author::author_annotation::fetch()
-        )
+        .find_unique(author::id::equals(translator_id))
+        .with(author::author_annotation::fetch())
         .exec()
         .await
         .unwrap();
@@ -32,43 +48,22 @@ async fn get_translated_books(
 
     let books_filter = vec![
         book::is_deleted::equals(false),
-        book::translations::some(vec![
-            translator::author_id::equals(translator_id)
-        ]),
-        book::lang::in_vec(allowed_langs.clone())
+        book::translations::some(vec![translator::author_id::equals(translator_id)]),
+        book::lang::in_vec(allowed_langs.clone()),
     ];
 
-    let books_count = db
-        .book()
-        .count(books_filter.clone())
-        .exec()
-        .await
-        .unwrap();
+    let books_count = db.book().count(books_filter.clone()).exec().await.unwrap();
 
     let books = db
         .book()
         .find_many(books_filter)
-        .with(
-            book::source::fetch()
-        )
-        .with(
-            book::book_annotation::fetch()
-        )
+        .with(book::source::fetch())
+        .with(book::book_annotation::fetch())
         .with(
             book::book_authors::fetch(vec![])
-                .with(
-                    book_author::author::fetch()
-                        .with(
-                            author::author_annotation::fetch()
-                        )
-                )
+                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
         )
-        .with(
-            book::book_sequences::fetch(vec![])
-                .with(
-                    book_sequence::sequence::fetch()
-                )
-        )
+        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
         .order_by(book::id::order(prisma_client_rust::Direction::Asc))
         .skip((pagination.page - 1) * pagination.size)
         .take(pagination.size)
@@ -80,26 +75,25 @@ async fn get_translated_books(
         translator.into(),
         books.iter().map(|item| item.clone().into()).collect(),
         books_count,
-        &pagination
+        &pagination,
     );
 
     Json(page).into_response()
 }
 
-
 async fn get_translated_books_available_types(
     db: Database,
     Path(translator_id): Path<i32>,
-    axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<AllowedLangs>
+    axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
+        AllowedLangs,
+    >,
 ) -> impl IntoResponse {
     let books = db
         .book()
         .find_many(vec![
             book::is_deleted::equals(false),
-            book::translations::some(vec![
-                translator::author_id::equals(translator_id)
-            ]),
-            book::lang::in_vec(allowed_langs)
+            book::translations::some(vec![translator::author_id::equals(translator_id)]),
+            book::lang::in_vec(allowed_langs),
         ])
         .exec()
         .await
@@ -120,27 +114,29 @@ async fn get_translated_books_available_types(
     Json::<Vec<String>>(file_types.into_iter().collect())
 }
 
-
 async fn search_translators(
     db: Database,
     Path(query): Path<String>,
-    axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<AllowedLangs>,
-    pagination: Query<Pagination>
+    axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
+        AllowedLangs,
+    >,
+    pagination: Query<Pagination>,
 ) -> impl IntoResponse {
     let client = get_meili_client();
 
     let authors_index = client.index("authors");
 
-    let filter = format!(
-        "translator_langs IN [{}]",
-        allowed_langs.join(", ")
-    );
+    let filter = format!("translator_langs IN [{}]", allowed_langs.join(", "));
 
     let result = authors_index
         .search()
         .with_query(&query)
         .with_filter(&filter)
-        .with_offset(((pagination.page - 1) * pagination.size).try_into().unwrap())
+        .with_offset(
+            ((pagination.page - 1) * pagination.size)
+                .try_into()
+                .unwrap(),
+        )
         .with_limit(pagination.size.try_into().unwrap())
         .execute::<AuthorMeili>()
         .await
@@ -151,12 +147,8 @@ async fn search_translators(
 
     let mut translators = db
         .author()
-        .find_many(vec![
-            author::id::in_vec(translator_ids.clone())
-        ])
-        .with(
-            author::author_annotation::fetch()
-        )
+        .find_many(vec![author::id::in_vec(translator_ids.clone())])
+        .with(author::author_annotation::fetch())
         .order_by(author::id::order(prisma_client_rust::Direction::Asc))
         .exec()
         .await
@@ -172,16 +164,18 @@ async fn search_translators(
     let page: Page<Author> = Page::new(
         translators.iter().map(|item| item.clone().into()).collect(),
         total.try_into().unwrap(),
-        &pagination
+        &pagination,
     );
 
     Json(page)
 }
 
-
 pub async fn get_translators_router() -> Router {
     Router::new()
         .route("/:translator_id/books", get(get_translated_books))
-        .route("/:translator_id/available_types", get(get_translated_books_available_types))
+        .route(
+            "/:translator_id/available_types",
+            get(get_translated_books_available_types),
+        )
         .route("/search/:query", get(search_translators))
 }

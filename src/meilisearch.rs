@@ -3,12 +3,8 @@ use serde::Deserialize;
 
 use crate::config::CONFIG;
 
-
 pub fn get_meili_client() -> Client {
-    Client::new(
-        &CONFIG.meili_host,
-        Some(CONFIG.meili_master_key.clone())
-    )
+    Client::new(&CONFIG.meili_host, Some(CONFIG.meili_master_key.clone()))
 }
 
 pub trait GetId {
@@ -23,7 +19,7 @@ pub struct AuthorMeili {
     pub middle_name: String,
     pub author_langs: Vec<String>,
     pub translator_langs: Vec<String>,
-    pub books_count: i32
+    pub books_count: i32,
 }
 
 impl GetId for AuthorMeili {
@@ -32,13 +28,12 @@ impl GetId for AuthorMeili {
     }
 }
 
-
 #[derive(Deserialize)]
 pub struct BookMeili {
     pub id: i32,
     pub title: String,
     pub lang: String,
-    pub genres: Vec<i32>
+    pub genres: Vec<i32>,
 }
 
 impl GetId for BookMeili {
@@ -47,14 +42,13 @@ impl GetId for BookMeili {
     }
 }
 
-
 #[derive(Deserialize)]
 pub struct GenreMeili {
     pub id: i32,
     pub description: String,
     pub meta: String,
     pub langs: Vec<String>,
-    pub books_count: i32
+    pub books_count: i32,
 }
 
 impl GetId for GenreMeili {
@@ -63,13 +57,12 @@ impl GetId for GenreMeili {
     }
 }
 
-
 #[derive(Deserialize)]
 pub struct SequenceMeili {
     pub id: i32,
     pub name: String,
     pub langs: Vec<String>,
-    pub books_count: i32
+    pub books_count: i32,
 }
 
 impl GetId for SequenceMeili {

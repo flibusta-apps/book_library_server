@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::prisma::genre;
 
@@ -11,7 +11,7 @@ pub struct Genre {
     pub remote_id: i32,
     pub code: String,
     pub description: String,
-    pub meta: String
+    pub meta: String,
 }
 
 impl From<genre::Data> for Genre {
@@ -32,11 +32,10 @@ impl From<genre::Data> for Genre {
             code,
             description,
             meta,
-            source: source.unwrap().as_ref().clone().into()
+            source: source.unwrap().as_ref().clone().into(),
         }
     }
 }
-
 
 #[derive(Deserialize)]
 pub struct GenreFilter {

@@ -1,40 +1,36 @@
 use std::collections::HashSet;
 
-use axum::{Router, routing::get, extract::Query, Json, response::IntoResponse};
+use axum::{extract::Query, response::IntoResponse, routing::get, Json, Router};
 use prisma_client_rust::Direction;
 
-use crate::{serializers::{pagination::{Pagination, Page}, genre::{Genre, GenreFilter}}, prisma::genre};
+use crate::{
+    prisma::genre,
+    serializers::{
+        genre::{Genre, GenreFilter},
+        pagination::{Page, Pagination},
+    },
+};
 
 use super::Database;
-
 
 pub async fn get_genres(
     db: Database,
     pagination: Query<Pagination>,
-    Query(GenreFilter { meta }): Query<GenreFilter>
+    Query(GenreFilter { meta }): Query<GenreFilter>,
 ) -> impl IntoResponse {
     let filter = {
         match meta {
-            Some(meta) => vec![
-                genre::meta::equals(meta)
-            ],
+            Some(meta) => vec![genre::meta::equals(meta)],
             None => vec![],
         }
     };
 
-    let genres_count = db
-        .genre()
-        .count(filter.clone())
-        .exec()
-        .await
-        .unwrap();
+    let genres_count = db.genre().count(filter.clone()).exec().await.unwrap();
 
     let genres = db
         .genre()
         .find_many(filter)
-        .with(
-            genre::source::fetch()
-        )
+        .with(genre::source::fetch())
         .order_by(genre::id::order(Direction::Asc))
         .skip((pagination.page - 1) * pagination.size)
         .take(pagination.size)
@@ -45,16 +41,13 @@ pub async fn get_genres(
     let page: Page<Genre> = Page::new(
         genres.iter().map(|item| item.clone().into()).collect(),
         genres_count,
-        &pagination
+        &pagination,
     );
 
     Json(page)
 }
 
-
-pub async fn get_genre_metas(
-    db: Database
-) -> impl IntoResponse {
+pub async fn get_genre_metas(db: Database) -> impl IntoResponse {
     let genres = db
         .genre()
         .find_many(vec![])
@@ -74,7 +67,6 @@ pub async fn get_genre_metas(
 
     Json::<Vec<String>>(metas)
 }
-
 
 pub async fn get_genres_router() -> Router {
     Router::new()

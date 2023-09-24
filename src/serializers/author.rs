@@ -2,7 +2,10 @@ use serde::Serialize;
 
 use crate::prisma::{author, book};
 
-use super::{sequence::Sequence, utils::{get_available_types, get_translators, get_sequences}};
+use super::{
+    sequence::Sequence,
+    utils::{get_available_types, get_sequences, get_translators},
+};
 
 #[derive(Serialize)]
 pub struct Author {
@@ -33,7 +36,6 @@ impl From<author::Data> for Author {
         }
     }
 }
-
 
 #[derive(Serialize)]
 pub struct AuthorBook {

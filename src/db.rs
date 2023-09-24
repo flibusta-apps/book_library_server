@@ -1,5 +1,4 @@
-use crate::{prisma::PrismaClient, config::CONFIG};
-
+use crate::{config::CONFIG, prisma::PrismaClient};
 
 pub async fn get_prisma_client() -> PrismaClient {
     let database_url: String = format!(

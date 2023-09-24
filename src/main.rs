@@ -1,16 +1,15 @@
 pub mod config;
-pub mod views;
-pub mod prisma;
 pub mod db;
-pub mod serializers;
 pub mod meilisearch;
+pub mod prisma;
+pub mod serializers;
+pub mod views;
 
+use sentry::{integrations::debug_images::DebugImagesIntegration, types::Dsn, ClientOptions};
 use std::{net::SocketAddr, str::FromStr};
-use sentry::{ClientOptions, types::Dsn, integrations::debug_images::DebugImagesIntegration};
 use tracing::info;
 
 use crate::views::get_router;
-
 
 #[tokio::main]
 async fn main() {
