@@ -98,6 +98,7 @@ model Book {
   uploaded        DateTime        @db.Date
   is_deleted      Boolean         @default(false)
   pages           Int?
+  year            Int             @db.SmallInt @default(0)
   source          Source          @relation(fields: [source_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_books_sources_id_source")
   book_annotation BookAnnotation?
   book_authors    BookAuthor[]
