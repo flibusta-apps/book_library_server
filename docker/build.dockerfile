@@ -21,4 +21,4 @@ RUN chmod +x /*.sh
 WORKDIR /app
 
 COPY --from=builder /app/target/release/book_library_server /usr/local/bin
-ENTRYPOINT ["/start.sh"]
+CMD ["/start.sh"]
