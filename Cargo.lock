@@ -338,6 +338,7 @@ dependencies = [
  "prisma-client-rust",
  "rand 0.8.5",
  "sentry",
+ "sentry-tracing",
  "serde",
  "tokio",
  "tower-http",

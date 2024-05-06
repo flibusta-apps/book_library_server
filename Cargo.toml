@@ -19,6 +19,7 @@ tokio = { version = "1.37.0", features = ["full"] }
 
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"]}
+sentry-tracing = "0.32.3"
 tower-http = { version = "0.5.2", features = ["trace"] }
 
 axum = { version = "0.7.5", features = ["json"] }

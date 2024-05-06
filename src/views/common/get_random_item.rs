@@ -25,7 +25,7 @@ where
         .await
         .unwrap();
 
-    let item = &result.hits.get(0).unwrap().result;
+    let item = &result.hits.first().unwrap().result;
 
     item.get_id()
 }
