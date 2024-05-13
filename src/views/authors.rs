@@ -185,7 +185,7 @@ async fn get_author_books_available_types(
         file_types.insert(book.file_type.clone());
     }
 
-    if file_types.contains(&"fb2".to_string()) {
+    if file_types.contains("fb2") {
         file_types.insert("epub".to_string());
         file_types.insert("mobi".to_string());
         file_types.insert("fb2zip".to_string());
