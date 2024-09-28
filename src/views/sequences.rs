@@ -169,16 +169,43 @@ async fn get_sequence_books(
     };
 
     let books_filter = vec![
-        book::is_deleted::equals(false),
-        book::book_sequences::some(vec![book_sequence::sequence_id::equals(sequence_id)]),
-        book::lang::in_vec(allowed_langs.clone()),
+        book_sequence::book::is(vec![
+            book::is_deleted::equals(false),
+            book::lang::in_vec(allowed_langs.clone()),
+        ]),
+        book_sequence::sequence_id::equals(sequence.id),
     ];
 
-    let books_count = db.book().count(books_filter.clone()).exec().await.unwrap();
+    let books_count = db
+        .book_sequence()
+        .count(books_filter.clone())
+        .exec()
+        .await
+        .unwrap();
+
+    let book_sequences = db
+        .book_sequence()
+        .find_many(vec![
+            book_sequence::book::is(vec![
+                book::is_deleted::equals(false),
+                book::lang::in_vec(allowed_langs.clone()),
+            ]),
+            book_sequence::sequence_id::equals(sequence.id),
+        ])
+        .order_by(book_sequence::position::order(
+            prisma_client_rust::Direction::Asc,
+        ))
+        .skip((pagination.page - 1) * pagination.size)
+        .take(pagination.size)
+        .exec()
+        .await
+        .unwrap();
+
+    let book_ids: Vec<i32> = book_sequences.iter().map(|a| a.book_id).collect();
 
     let books = db
         .book()
-        .find_many(books_filter)
+        .find_many(vec![book::id::in_vec(book_ids)])
         .with(book::source::fetch())
         .with(book::book_annotation::fetch())
         .with(
@@ -199,12 +226,15 @@ async fn get_sequence_books(
         .await
         .unwrap();
 
-    let page: PageWithParent<SequenceBook, Sequence> = PageWithParent::new(
-        sequence.into(),
-        books.iter().map(|item| item.clone().into()).collect(),
-        books_count,
-        &pagination,
-    );
+    let mut sequence_books = books
+        .iter()
+        .map(|item| item.clone().into())
+        .collect::<Vec<SequenceBook>>();
+
+    sequence_books.sort_by(|a, b| a.position.cmp(&b.position));
+
+    let page: PageWithParent<SequenceBook, Sequence> =
+        PageWithParent::new(sequence.into(), sequence_books, books_count, &pagination);
 
     Json(page).into_response()
 }
