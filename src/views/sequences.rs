@@ -189,6 +189,9 @@ async fn get_sequence_books(
             book::translations::fetch(vec![])
                 .with(translator::author::fetch().with(author::author_annotation::fetch())),
         )
+        .with(book::book_sequences::fetch(vec![
+            book_sequence::sequence_id::equals(sequence.id),
+        ]))
         .order_by(book::id::order(prisma_client_rust::Direction::Asc))
         .skip((pagination.page - 1) * pagination.size)
         .take(pagination.size)

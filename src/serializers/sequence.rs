@@ -33,6 +33,7 @@ pub struct SequenceBook {
     pub authors: Vec<Author>,
     pub translators: Vec<Author>,
     pub annotation_exists: bool,
+    pub position: i32,
 }
 
 impl From<book::Data> for SequenceBook {
@@ -48,6 +49,7 @@ impl From<book::Data> for SequenceBook {
             translations,
             book_annotation,
             source,
+            book_sequences,
             ..
         } = value;
 
@@ -62,6 +64,7 @@ impl From<book::Data> for SequenceBook {
             authors: get_authors(book_authors),
             translators: get_translators(translations),
             annotation_exists: book_annotation.unwrap().is_some(),
+            position: book_sequences.unwrap().first().unwrap().position,
         }
     }
 }
