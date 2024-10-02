@@ -6,7 +6,7 @@ use crate::meilisearch::GetId;
 
 pub async fn get_random_item<'a, T>(index: Index, filter: String) -> i32
 where
-    T: DeserializeOwned + GetId + 'static,
+    T: DeserializeOwned + GetId + 'static + Send + Sync,
 {
     let result = index
         .search()
