@@ -27,4 +27,4 @@ rand = "0.8.5"
 
 chrono = { version = "0.4.39", features = ["serde"] }
 
-sqlx = { version = "0.8.2", features = ["runtime-tokio", "postgres", "macros", "chrono"] }
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "postgres", "macros", "chrono", "json"] }
