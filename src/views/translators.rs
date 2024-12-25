@@ -84,7 +84,7 @@ async fn get_translated_books(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
             (
                 SELECT
@@ -145,7 +145,7 @@ async fn get_translated_books_available_types(
         r#"
         SELECT
             b.id,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>"
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>"
         FROM books b
         JOIN book_authors ba ON b.id = ba.book
         WHERE

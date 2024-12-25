@@ -58,7 +58,7 @@ pub async fn get_books(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
             (
                 SELECT
@@ -180,7 +180,7 @@ pub async fn get_base_books(
         r#"
         SELECT
             b.id,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>"
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>"
         FROM books b
         WHERE lang = ANY($1) AND
         ($2::boolean IS NULL OR is_deleted = $2) AND
@@ -241,7 +241,7 @@ pub async fn get_random_book(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
             (
                 SELECT
@@ -349,7 +349,7 @@ pub async fn get_remote_book(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
             (
                 SELECT
@@ -487,7 +487,7 @@ pub async fn search_books(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
             (
                 SELECT
@@ -569,7 +569,7 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
             (
                 SELECT
