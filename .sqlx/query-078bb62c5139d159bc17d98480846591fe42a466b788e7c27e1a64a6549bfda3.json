@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(*) FROM book_sequences bs\n        JOIN books b ON b.id = bs.book\n        WHERE\n            b.is_deleted = FALSE AND\n            bs.sequence = $1 AND\n            b.lang = ANY($2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "078bb62c5139d159bc17d98480846591fe42a466b788e7c27e1a64a6549bfda3"
+}

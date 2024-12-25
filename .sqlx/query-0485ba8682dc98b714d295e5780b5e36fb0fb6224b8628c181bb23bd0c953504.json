@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            b.id,\n            b.title,\n            b.lang,\n            b.file_type,\n            b.year,\n            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS \"available_types!: Vec<String>\",\n            b.uploaded,\n            (\n                SELECT\n                    JSON_AGG(\n                        JSON_BUILD_OBJECT(\n                            'id', authors.id,\n                            'first_name', authors.first_name,\n                            'last_name', authors.last_name,\n                            'middle_name', authors.middle_name,\n                            'annotation_exists', EXISTS(\n                                SELECT * FROM author_annotations WHERE author = authors.id\n                            )\n                        )\n                    )\n                FROM book_authors\n                JOIN authors ON authors.id = book_authors.author\n                WHERE book_authors.book = b.id\n            ) AS \"authors!: Vec<Author>\",\n            (\n                SELECT\n                    JSON_AGG(\n                        JSON_BUILD_OBJECT(\n                            'id', authors.id,\n                            'first_name', authors.first_name,\n                            'last_name', authors.last_name,\n                            'middle_name', authors.middle_name,\n                            'annotation_exists', EXISTS(\n                                SELECT * FROM author_annotations WHERE author = authors.id\n                            )\n                        )\n                    )\n                FROM translations\n                JOIN authors ON authors.id = translations.author\n                WHERE translations.book = b.id\n            ) AS \"translators!: Vec<Author>\",\n            (\n                SELECT\n                    JSON_AGG(\n                        JSON_BUILD_OBJECT(\n                            'id', sequences.id,\n                            'name', sequences.name\n                        )\n                    )\n                FROM book_sequences\n                JOIN sequences ON sequences.id = book_sequences.sequence\n                WHERE book_sequences.book = b.id\n            ) AS \"sequences!: Vec<Sequence>\",\n            EXISTS(\n                SELECT * FROM book_annotations WHERE book = b.id\n            ) AS \"annotation_exists!: bool\",\n            (\n                SELECT\n                    JSON_BUILD_OBJECT(\n                        'id', sources.id,\n                        'name', sources.name\n                    )\n                FROM sources\n                WHERE sources.id = b.source\n            ) AS \"source!: Source\",\n            b.remote_id\n        FROM books b\n        WHERE lang = ANY($1) AND\n        ($2::boolean IS NULL OR is_deleted = $2) AND\n        ($3::date IS NULL OR uploaded >= $3) AND\n        ($4::date IS NULL OR uploaded <= $4) AND\n        ($5::integer IS NULL OR id >= $5) AND\n        ($6::integer IS NULL OR id <= $6)\n        ORDER BY b.id ASC\n        OFFSET $7\n        LIMIT $8\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "lang",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "year",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 5,
+        "name": "available_types!: Vec<String>",
+        "type_info": "VarcharArray"
+      },
+      {
+        "ordinal": 6,
+        "name": "uploaded",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 7,
+        "name": "authors!: Vec<Author>",
+        "type_info": "Json"
+      },
+      {
+        "ordinal": 8,
+        "name": "translators!: Vec<Author>",
+        "type_info": "Json"
+      },
+      {
+        "ordinal": 9,
+        "name": "sequences!: Vec<Sequence>",
+        "type_info": "Json"
+      },
+      {
+        "ordinal": 10,
+        "name": "annotation_exists!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "source!: Source",
+        "type_info": "Json"
+      },
+      {
+        "ordinal": 12,
+        "name": "remote_id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Bool",
+        "Date",
+        "Date",
+        "Int4",
+        "Int4",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "0485ba8682dc98b714d295e5780b5e36fb0fb6224b8628c181bb23bd0c953504"
+}

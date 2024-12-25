@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            a.id,\n            a.first_name,\n            a.last_name,\n            COALESCE(a.middle_name, '') AS \"middle_name!: String\",\n            CASE\n                WHEN aa.id IS NOT NULL THEN true\n                ELSE false\n            END AS \"annotation_exists!: bool\"\n        FROM authors a\n        LEFT JOIN author_annotations aa ON a.id = aa.author\n        ORDER BY a.id ASC\n        OFFSET $1\n        LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "middle_name!: String",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "annotation_exists!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "6e1d93e7773059ec3cb4fd29259f4f0250868c3f56e7b017ba8e5c20ccffb57d"
+}

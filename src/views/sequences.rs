@@ -187,14 +187,6 @@ async fn get_sequence_books(
         None => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    // let books_filter = vec![
-    //     book_sequence::book::is(vec![
-    //         book::is_deleted::equals(false),
-    //         book::lang::in_vec(allowed_langs.clone()),
-    //     ]),
-    //     book_sequence::sequence_id::equals(sequence.id),
-    // ];
-
     let books_count = sqlx::query_scalar!(
         "SELECT COUNT(*) FROM book_sequences bs
         JOIN books b ON b.id = bs.book
@@ -276,27 +268,6 @@ async fn get_sequence_books(
         .fetch_all(&db.0)
         .await
         .unwrap();
-
-    // let books = db
-    //     .book()
-    //     .find_many(vec![book::id::in_vec(book_ids)])
-    //     .with(book::source::fetch())
-    //     .with(book::book_annotation::fetch())
-    //     .with(
-    //         book::book_authors::fetch(vec![])
-    //             .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-    //     )
-    //     .with(
-    //         book::translations::fetch(vec![])
-    //             .with(translator::author::fetch().with(author::author_annotation::fetch())),
-    //     )
-    //     .with(book::book_sequences::fetch(vec![
-    //         book_sequence::sequence_id::equals(sequence.id),
-    //     ]))
-    //     .order_by(book::id::order(prisma_client_rust::Direction::Asc))
-    //     .exec()
-    //     .await
-    //     .unwrap();
 
     books.sort_by(|a, b| a.position.cmp(&b.position));
 

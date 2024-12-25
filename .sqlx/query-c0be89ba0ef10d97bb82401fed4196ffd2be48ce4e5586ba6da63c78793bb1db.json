@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*) FROM books\n        WHERE lang = ANY($1) AND\n        ($2::boolean IS NULL OR is_deleted = $2) AND\n        ($3::date IS NULL OR uploaded >= $3) AND\n        ($4::date IS NULL OR uploaded <= $4) AND\n        ($5::integer IS NULL OR id >= $5) AND\n        ($6::integer IS NULL OR id <= $6)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Bool",
+        "Date",
+        "Date",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c0be89ba0ef10d97bb82401fed4196ffd2be48ce4e5586ba6da63c78793bb1db"
+}

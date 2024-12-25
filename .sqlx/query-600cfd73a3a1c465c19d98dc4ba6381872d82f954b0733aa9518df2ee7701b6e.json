@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*)\n        FROM books b\n        JOIN book_authors ba ON b.id = ba.book\n        WHERE b.is_deleted = false AND ba.author = $1 AND b.lang = ANY($2)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "600cfd73a3a1c465c19d98dc4ba6381872d82f954b0733aa9518df2ee7701b6e"
+}
