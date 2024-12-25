@@ -1,7 +1,6 @@
 pub mod config;
 pub mod db;
 pub mod meilisearch;
-pub mod prisma;
 pub mod serializers;
 pub mod views;
 

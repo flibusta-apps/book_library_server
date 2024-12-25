@@ -10,40 +10,51 @@ use axum::{
 
 use crate::{
     meilisearch::{get_meili_client, AuthorMeili},
-    prisma::{
-        author,
-        author_annotation::{self},
-        book, book_author, book_sequence, translator,
-    },
     serializers::{
         allowed_langs::AllowedLangs,
         author::{Author, AuthorBook},
         author_annotation::AuthorAnnotation,
+        book::BaseBook,
         pagination::{Page, PageWithParent, Pagination},
+        sequence::Sequence,
     },
 };
 
 use super::{common::get_random_item::get_random_item, Database};
 
 async fn get_authors(db: Database, pagination: Query<Pagination>) -> impl IntoResponse {
-    let authors_count = db.author().count(vec![]).exec().await.unwrap();
-
-    let authors = db
-        .author()
-        .find_many(vec![])
-        .with(author::author_annotation::fetch())
-        .order_by(author::id::order(prisma_client_rust::Direction::Asc))
-        .skip((pagination.page - 1) * pagination.size)
-        .take(pagination.size)
-        .exec()
+    let authors_count = sqlx::query_scalar!("SELECT COUNT(*) FROM authors",)
+        .fetch_one(&db.0)
         .await
+        .unwrap()
         .unwrap();
 
-    let page: Page<Author> = Page::new(
-        authors.iter().map(|item| item.clone().into()).collect(),
-        authors_count,
-        &pagination,
-    );
+    let authors = sqlx::query_as!(
+        Author,
+        r#"
+        SELECT
+            a.id,
+            a.first_name,
+            a.last_name,
+            COALESCE(a.middle_name, '') AS "middle_name!: String",
+            CASE
+                WHEN aa.id IS NOT NULL THEN true
+                ELSE false
+            END AS "annotation_exists!: bool"
+        FROM authors a
+        LEFT JOIN author_annotations aa ON a.id = aa.author
+        ORDER BY a.id ASC
+        OFFSET $1
+        LIMIT $2
+        "#,
+        (pagination.page - 1) * pagination.size,
+        pagination.size
+    )
+    .fetch_all(&db.0)
+    .await
+    .unwrap();
+
+    let page: Page<Author> = Page::new(authors, authors_count, &pagination);
 
     Json(page)
 }
@@ -64,43 +75,80 @@ async fn get_random_author(
         get_random_item::<AuthorMeili>(authors_index, filter).await
     };
 
-    let author = db
-        .author()
-        .find_unique(author::id::equals(author_id))
-        .with(author::author_annotation::fetch())
-        .exec()
-        .await
-        .unwrap()
-        .unwrap();
+    let author = sqlx::query_as!(
+        Author,
+        r#"
+        SELECT
+            a.id,
+            a.first_name,
+            a.last_name,
+            COALESCE(a.middle_name, '') AS "middle_name!: String",
+            CASE
+                WHEN aa.id IS NOT NULL THEN true
+                ELSE false
+            END AS "annotation_exists!: bool"
+        FROM authors a
+        LEFT JOIN author_annotations aa ON a.id = aa.author
+        WHERE a.id = $1
+        "#,
+        author_id
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap();
 
-    Json::<Author>(author.into())
+    Json::<Author>(author)
 }
 
 async fn get_author(db: Database, Path(author_id): Path<i32>) -> impl IntoResponse {
-    let author = db
-        .author()
-        .find_unique(author::id::equals(author_id))
-        .with(author::author_annotation::fetch())
-        .exec()
-        .await
-        .unwrap();
+    let author = sqlx::query_as!(
+        Author,
+        r#"
+        SELECT
+            a.id,
+            a.first_name,
+            a.last_name,
+            COALESCE(a.middle_name, '') AS "middle_name!: String",
+            CASE
+                WHEN aa.id IS NOT NULL THEN true
+                ELSE false
+            END AS "annotation_exists!: bool"
+        FROM authors a
+        LEFT JOIN author_annotations aa ON a.id = aa.author
+        WHERE a.id = $1
+        "#,
+        author_id
+    )
+    .fetch_optional(&db.0)
+    .await
+    .unwrap();
 
     match author {
-        Some(author) => Json::<Author>(author.into()).into_response(),
+        Some(author) => Json::<Author>(author).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
 async fn get_author_annotation(db: Database, Path(author_id): Path<i32>) -> impl IntoResponse {
-    let author_annotation = db
-        .author_annotation()
-        .find_unique(author_annotation::author_id::equals(author_id))
-        .exec()
-        .await
-        .unwrap();
+    let author_annotation = sqlx::query_as!(
+        AuthorAnnotation,
+        r#"
+        SELECT
+            aa.id,
+            aa.title,
+            aa.text,
+            aa.file
+        FROM author_annotations aa
+        WHERE aa.author = $1
+        "#,
+        author_id
+    )
+    .fetch_optional(&db.0)
+    .await
+    .unwrap();
 
     match author_annotation {
-        Some(annotation) => Json::<AuthorAnnotation>(annotation.into()).into_response(),
+        Some(annotation) => Json::<AuthorAnnotation>(annotation).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }
@@ -113,50 +161,109 @@ async fn get_author_books(
     >,
     pagination: Query<Pagination>,
 ) -> impl IntoResponse {
-    let author = db
-        .author()
-        .find_unique(author::id::equals(author_id))
-        .with(author::author_annotation::fetch())
-        .exec()
-        .await
-        .unwrap();
+    let author = sqlx::query_as!(
+        Author,
+        r#"
+        SELECT
+            a.id,
+            a.first_name,
+            a.last_name,
+            COALESCE(a.middle_name, '') AS "middle_name!: String",
+            CASE
+                WHEN aa.id IS NOT NULL THEN true
+                ELSE false
+            END AS "annotation_exists!: bool"
+        FROM authors a
+        LEFT JOIN author_annotations aa ON a.id = aa.author
+        WHERE a.id = $1
+        "#,
+        author_id
+    )
+    .fetch_optional(&db.0)
+    .await
+    .unwrap();
 
     let author = match author {
         Some(author) => author,
         None => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    let books_filter = vec![
-        book::is_deleted::equals(false),
-        book::book_authors::some(vec![book_author::author_id::equals(author_id)]),
-        book::lang::in_vec(allowed_langs.clone()),
-    ];
+    let books_count = sqlx::query_scalar!(
+        r#"
+        SELECT COUNT(*)
+        FROM books b
+        JOIN book_authors ba ON b.id = ba.book
+        WHERE b.is_deleted = false AND ba.author = $1 AND b.lang = ANY($2)
+        "#,
+        author_id,
+        &allowed_langs
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap()
+    .unwrap();
 
-    let books_count = db.book().count(books_filter.clone()).exec().await.unwrap();
-
-    let books = db
-        .book()
-        .find_many(books_filter)
-        .with(book::source::fetch())
-        .with(book::book_annotation::fetch())
-        .with(
-            book::translations::fetch(vec![])
-                .with(translator::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
-        .order_by(book::title::order(prisma_client_rust::Direction::Asc))
-        .skip((pagination.page - 1) * pagination.size)
-        .take(pagination.size)
-        .exec()
+    let books = sqlx::query_as!(
+        AuthorBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM translations
+                JOIN authors ON authors.id = translations.author
+                WHERE translations.book = b.id
+            ) AS "translators!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', sequences.id,
+                            'name', sequences.name
+                        )
+                    )
+                FROM book_sequences
+                JOIN sequences ON sequences.id = book_sequences.sequence
+                WHERE book_sequences.book = b.id
+            ) AS "sequences!: Vec<Sequence>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool"
+        FROM books b
+        JOIN book_authors ba ON b.id = ba.book
+        WHERE b.is_deleted = false AND ba.author = $1 AND b.lang = ANY($2)
+        ORDER BY b.title ASC
+        OFFSET $3
+        LIMIT $4
+        "#,
+        author_id,
+        &allowed_langs,
+        (pagination.page - 1) * pagination.size,
+        pagination.size
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
-    let page: PageWithParent<AuthorBook, Author> = PageWithParent::new(
-        author.into(),
-        books.iter().map(|item| item.clone().into()).collect(),
-        books_count,
-        &pagination,
-    );
+    let page: PageWithParent<AuthorBook, Author> =
+        PageWithParent::new(author, books, books_count, &pagination);
 
     Json(page).into_response()
 }
@@ -168,27 +275,31 @@ async fn get_author_books_available_types(
         AllowedLangs,
     >,
 ) -> impl IntoResponse {
-    let books = db
-        .book()
-        .find_many(vec![
-            book::is_deleted::equals(false),
-            book::book_authors::some(vec![book_author::author_id::equals(author_id)]),
-            book::lang::in_vec(allowed_langs),
-        ])
-        .exec()
+    // TODO: refactor
+
+    let books = sqlx::query_as!(
+        BaseBook,
+        r#"
+        SELECT
+            b.id,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>"
+        FROM books b
+        JOIN book_authors ba ON b.id = ba.book
+        WHERE b.is_deleted = false AND ba.author = $1 AND b.lang = ANY($2)
+        "#,
+        author_id,
+        &allowed_langs
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
     let mut file_types: HashSet<String> = HashSet::new();
 
     for book in books {
-        file_types.insert(book.file_type.clone());
-    }
-
-    if file_types.contains("fb2") {
-        file_types.insert("epub".to_string());
-        file_types.insert("mobi".to_string());
-        file_types.insert("fb2zip".to_string());
+        for file_type in book.available_types {
+            file_types.insert(file_type);
+        }
     }
 
     Json::<Vec<String>>(file_types.into_iter().collect())
@@ -225,14 +336,27 @@ async fn search_authors(
     let total = result.estimated_total_hits.unwrap();
     let author_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
-    let mut authors = db
-        .author()
-        .find_many(vec![author::id::in_vec(author_ids.clone())])
-        .with(author::author_annotation::fetch())
-        .order_by(author::id::order(prisma_client_rust::Direction::Asc))
-        .exec()
-        .await
-        .unwrap();
+    let mut authors = sqlx::query_as!(
+        Author,
+        r#"
+        SELECT
+            a.id,
+            a.first_name,
+            a.last_name,
+            COALESCE(a.middle_name, '') AS "middle_name!: String",
+            CASE
+                WHEN aa.id IS NOT NULL THEN true
+                ELSE false
+            END AS "annotation_exists!: bool"
+        FROM authors a
+        LEFT JOIN author_annotations aa ON a.id = aa.author
+        WHERE a.id = ANY($1)
+        "#,
+        &author_ids
+    )
+    .fetch_all(&db.0)
+    .await
+    .unwrap();
 
     authors.sort_by(|a, b| {
         let a_pos = author_ids.iter().position(|i| *i == a.id).unwrap();
@@ -241,11 +365,7 @@ async fn search_authors(
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Author> = Page::new(
-        authors.iter().map(|item| item.clone().into()).collect(),
-        total.try_into().unwrap(),
-        &pagination,
-    );
+    let page: Page<Author> = Page::new(authors, total.try_into().unwrap(), &pagination);
 
     Json(page)
 }

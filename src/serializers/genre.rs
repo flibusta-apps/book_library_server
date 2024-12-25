@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::prisma::genre;
-
 use super::source::Source;
 
-#[derive(Serialize)]
+#[derive(sqlx::FromRow, sqlx::Type, Serialize)]
 pub struct Genre {
     pub id: i32,
     pub source: Source,
@@ -12,29 +10,6 @@ pub struct Genre {
     pub code: String,
     pub description: String,
     pub meta: String,
-}
-
-impl From<genre::Data> for Genre {
-    fn from(val: genre::Data) -> Self {
-        let genre::Data {
-            id,
-            remote_id,
-            code,
-            description,
-            meta,
-            source,
-            ..
-        } = val;
-
-        Genre {
-            id,
-            remote_id,
-            code,
-            description,
-            meta,
-            source: source.unwrap().as_ref().clone().into(),
-        }
-    }
 }
 
 #[derive(Deserialize)]

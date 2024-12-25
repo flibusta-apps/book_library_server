@@ -3,6 +3,7 @@ pub mod author;
 pub mod author_annotation;
 pub mod book;
 pub mod book_annotation;
+pub mod date;
 pub mod genre;
 pub mod pagination;
 pub mod sequence;

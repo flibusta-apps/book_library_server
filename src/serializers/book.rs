@@ -1,15 +1,9 @@
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
-use crate::prisma::book::{self};
+use super::date::naive_date_serializer;
 
-use super::{
-    author::Author,
-    genre::Genre,
-    sequence::Sequence,
-    source::Source,
-    utils::{get_authors, get_available_types, get_genres, get_sequences, get_translators},
-};
+use super::{author::Author, genre::Genre, sequence::Sequence, source::Source};
 
 fn default_langs() -> Vec<String> {
     vec!["ru".to_string(), "be".to_string(), "uk".to_string()]
@@ -26,49 +20,6 @@ pub struct BookFilter {
     pub id_lte: Option<i32>,
 }
 
-impl BookFilter {
-    pub fn get_filter_vec(self) -> Vec<book::WhereParam> {
-        let mut result = vec![];
-
-        result.push(book::lang::in_vec(self.allowed_langs));
-
-        match self.is_deleted {
-            Some(v) => {
-                result.push(book::is_deleted::equals(v));
-            }
-            None => {
-                result.push(book::is_deleted::equals(false));
-            }
-        };
-
-        if let Some(uploaded_gte) = self.uploaded_gte {
-            result.push(book::uploaded::gte(
-                NaiveDateTime::new(uploaded_gte, NaiveTime::default())
-                    .and_utc()
-                    .into(),
-            ));
-        };
-
-        if let Some(uploaded_lte) = self.uploaded_lte {
-            result.push(book::uploaded::lte(
-                NaiveDateTime::new(uploaded_lte, NaiveTime::default())
-                    .and_utc()
-                    .into(),
-            ));
-        };
-
-        if let Some(id_gte) = self.id_gte {
-            result.push(book::id::gte(id_gte));
-        };
-
-        if let Some(id_lte) = self.id_lte {
-            result.push(book::id::lte(id_lte));
-        };
-
-        result
-    }
-}
-
 #[derive(Serialize)]
 pub struct RemoteBook {
     pub id: i32,
@@ -77,7 +28,8 @@ pub struct RemoteBook {
     pub file_type: String,
     pub year: i32,
     pub available_types: Vec<String>,
-    pub uploaded: String,
+    #[serde(serialize_with = "naive_date_serializer::serialize")]
+    pub uploaded: NaiveDate,
     pub authors: Vec<Author>,
     pub translators: Vec<Author>,
     pub sequences: Vec<Sequence>,
@@ -86,62 +38,10 @@ pub struct RemoteBook {
     pub remote_id: i32,
 }
 
-impl From<book::Data> for RemoteBook {
-    fn from(value: book::Data) -> Self {
-        let book::Data {
-            id,
-            title,
-            lang,
-            file_type,
-            year,
-            uploaded,
-            book_authors,
-            translations,
-            book_sequences,
-            book_annotation,
-            source,
-            remote_id,
-            ..
-        } = value;
-
-        Self {
-            id,
-            title,
-            lang,
-            file_type: file_type.clone(),
-            year,
-            available_types: get_available_types(file_type, source.clone().unwrap().name),
-            uploaded: uploaded.format("%Y-%m-%d").to_string(),
-            authors: get_authors(book_authors),
-            translators: get_translators(translations),
-            sequences: get_sequences(book_sequences),
-            annotation_exists: book_annotation.unwrap().is_some(),
-            source: source.unwrap().as_ref().clone().into(),
-            remote_id,
-        }
-    }
-}
-
 #[derive(Serialize)]
 pub struct BaseBook {
     pub id: i32,
     pub available_types: Vec<String>,
-}
-
-impl From<book::Data> for BaseBook {
-    fn from(value: book::Data) -> Self {
-        let book::Data {
-            id,
-            file_type,
-            source,
-            ..
-        } = value;
-
-        Self {
-            id,
-            available_types: get_available_types(file_type, source.clone().unwrap().name),
-        }
-    }
 }
 
 #[derive(Serialize)]
@@ -152,7 +52,8 @@ pub struct DetailBook {
     pub file_type: String,
     pub year: i32,
     pub available_types: Vec<String>,
-    pub uploaded: String,
+    #[serde(serialize_with = "naive_date_serializer::serialize")]
+    pub uploaded: NaiveDate,
     pub authors: Vec<Author>,
     pub translators: Vec<Author>,
     pub sequences: Vec<Sequence>,
@@ -162,48 +63,6 @@ pub struct DetailBook {
     pub genres: Vec<Genre>,
     pub is_deleted: bool,
     pub pages: Option<i32>,
-}
-
-impl From<book::Data> for DetailBook {
-    fn from(value: book::Data) -> Self {
-        let book::Data {
-            id,
-            title,
-            lang,
-            file_type,
-            year,
-            uploaded,
-            book_authors,
-            translations,
-            book_sequences,
-            book_annotation,
-            source,
-            remote_id,
-            book_genres,
-            is_deleted,
-            pages,
-            ..
-        } = value;
-
-        Self {
-            id,
-            title,
-            lang,
-            file_type: file_type.clone(),
-            year,
-            available_types: get_available_types(file_type, source.clone().unwrap().name),
-            uploaded: uploaded.format("%Y-%m-%d").to_string(),
-            authors: get_authors(book_authors),
-            translators: get_translators(translations),
-            sequences: get_sequences(book_sequences),
-            annotation_exists: book_annotation.unwrap().is_some(),
-            source: source.unwrap().as_ref().clone().into(),
-            remote_id,
-            genres: get_genres(book_genres),
-            is_deleted,
-            pages,
-        }
-    }
 }
 
 #[derive(Deserialize)]
@@ -220,42 +79,10 @@ pub struct Book {
     pub file_type: String,
     pub year: i32,
     pub available_types: Vec<String>,
-    pub uploaded: String,
+    #[serde(serialize_with = "naive_date_serializer::serialize")]
+    pub uploaded: NaiveDate,
     pub authors: Vec<Author>,
     pub translators: Vec<Author>,
     pub sequences: Vec<Sequence>,
     pub annotation_exists: bool,
-}
-
-impl From<book::Data> for Book {
-    fn from(value: book::Data) -> Self {
-        let book::Data {
-            id,
-            title,
-            lang,
-            file_type,
-            year,
-            uploaded,
-            book_authors,
-            translations,
-            book_sequences,
-            book_annotation,
-            source,
-            ..
-        } = value;
-
-        Self {
-            id,
-            title,
-            lang,
-            file_type: file_type.clone(),
-            year,
-            available_types: get_available_types(file_type, source.clone().unwrap().name),
-            uploaded: uploaded.format("%Y-%m-%d").to_string(),
-            authors: get_authors(book_authors),
-            translators: get_translators(translations),
-            sequences: get_sequences(book_sequences),
-            annotation_exists: book_annotation.unwrap().is_some(),
-        }
-    }
 }

@@ -1,7 +1,3 @@
-use crate::prisma::{book_author, book_genre, book_sequence, translator};
-
-use super::{author::Author, genre::Genre, sequence::Sequence};
-
 pub fn get_available_types(file_type: String, source_name: String) -> Vec<String> {
     if file_type == "fb2" && source_name == "flibusta" {
         vec![
@@ -13,36 +9,4 @@ pub fn get_available_types(file_type: String, source_name: String) -> Vec<String
     } else {
         vec![file_type]
     }
-}
-
-pub fn get_authors(book_authors: Option<Vec<book_author::Data>>) -> Vec<Author> {
-    book_authors
-        .unwrap()
-        .iter()
-        .map(|item| item.author.clone().unwrap().as_ref().clone().into())
-        .collect()
-}
-
-pub fn get_translators(translations: Option<Vec<translator::Data>>) -> Vec<Author> {
-    translations
-        .unwrap()
-        .iter()
-        .map(|item| item.author.clone().unwrap().as_ref().clone().into())
-        .collect()
-}
-
-pub fn get_sequences(book_sequences: Option<Vec<book_sequence::Data>>) -> Vec<Sequence> {
-    book_sequences
-        .unwrap()
-        .iter()
-        .map(|item| item.sequence.clone().unwrap().as_ref().clone().into())
-        .collect()
-}
-
-pub fn get_genres(book_genres: Option<Vec<book_genre::Data>>) -> Vec<Genre> {
-    book_genres
-        .unwrap()
-        .iter()
-        .map(|item| item.genre.clone().unwrap().as_ref().clone().into())
-        .collect()
 }

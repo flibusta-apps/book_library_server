@@ -10,15 +10,12 @@ use axum::{
 
 use crate::{
     meilisearch::{get_meili_client, AuthorMeili},
-    prisma::{
-        author,
-        book::{self},
-        book_author, book_sequence, translator,
-    },
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
+        book::BaseBook,
         pagination::{Page, PageWithParent, Pagination},
+        sequence::Sequence,
         translator::TranslatorBook,
     },
 };
@@ -33,50 +30,103 @@ async fn get_translated_books(
     >,
     pagination: Query<Pagination>,
 ) -> impl IntoResponse {
-    let translator = db
-        .author()
-        .find_unique(author::id::equals(translator_id))
-        .with(author::author_annotation::fetch())
-        .exec()
-        .await
-        .unwrap();
+    let translator = sqlx::query_as!(
+        Author,
+        r#"
+        SELECT
+            a.id,
+            a.first_name,
+            a.last_name,
+            COALESCE(a.middle_name, '') AS "middle_name!: String",
+            CASE
+                WHEN aa.id IS NOT NULL THEN true
+                ELSE false
+            END AS "annotation_exists!: bool"
+        FROM authors a
+        LEFT JOIN author_annotations aa ON a.id = aa.author
+        WHERE a.id = $1
+        "#,
+        translator_id
+    )
+    .fetch_optional(&db.0)
+    .await
+    .unwrap();
 
     let translator = match translator {
         Some(translator) => translator,
         None => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    let books_filter = vec![
-        book::is_deleted::equals(false),
-        book::translations::some(vec![translator::author_id::equals(translator_id)]),
-        book::lang::in_vec(allowed_langs.clone()),
-    ];
+    let books_count = sqlx::query_scalar!(
+        r#"
+        SELECT COUNT(*)
+        FROM books b
+        JOIN book_authors ba ON b.id = ba.book
+        WHERE
+            b.is_deleted = false
+            AND ba.author = $1
+            AND b.lang = ANY($2)
+        "#,
+        translator_id,
+        &allowed_langs
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap()
+    .unwrap();
 
-    let books_count = db.book().count(books_filter.clone()).exec().await.unwrap();
-
-    let books = db
-        .book()
-        .find_many(books_filter)
-        .with(book::source::fetch())
-        .with(book::book_annotation::fetch())
-        .with(
-            book::book_authors::fetch(vec![])
-                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
-        .order_by(book::title::order(prisma_client_rust::Direction::Asc))
-        .skip((pagination.page - 1) * pagination.size)
-        .take(pagination.size)
-        .exec()
+    let books = sqlx::query_as!(
+        TranslatorBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM book_authors
+                JOIN authors ON authors.id = book_authors.author
+                WHERE book_authors.book = b.id
+            ) AS "authors!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', sequences.id,
+                            'name', sequences.name
+                        )
+                    )
+                FROM book_sequences
+                JOIN sequences ON sequences.id = book_sequences.sequence
+                WHERE book_sequences.book = b.id
+            ) AS "sequences!: Vec<Sequence>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool"
+        FROM books b
+        "#,
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
-    let page: PageWithParent<TranslatorBook, Author> = PageWithParent::new(
-        translator.into(),
-        books.iter().map(|item| item.clone().into()).collect(),
-        books_count,
-        &pagination,
-    );
+    let page: PageWithParent<TranslatorBook, Author> =
+        PageWithParent::new(translator, books, books_count, &pagination);
 
     Json(page).into_response()
 }
@@ -88,27 +138,34 @@ async fn get_translated_books_available_types(
         AllowedLangs,
     >,
 ) -> impl IntoResponse {
-    let books = db
-        .book()
-        .find_many(vec![
-            book::is_deleted::equals(false),
-            book::translations::some(vec![translator::author_id::equals(translator_id)]),
-            book::lang::in_vec(allowed_langs),
-        ])
-        .exec()
+    // TODO: refactor
+
+    let books = sqlx::query_as!(
+        BaseBook,
+        r#"
+        SELECT
+            b.id,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>"
+        FROM books b
+        JOIN book_authors ba ON b.id = ba.book
+        WHERE
+            b.is_deleted = false
+            AND ba.author = $1
+            AND b.lang = ANY($2)
+        "#,
+        translator_id,
+        &allowed_langs
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
     let mut file_types: HashSet<String> = HashSet::new();
 
     for book in books {
-        file_types.insert(book.file_type.clone());
-    }
-
-    if file_types.contains("fb2") {
-        file_types.insert("epub".to_string());
-        file_types.insert("mobi".to_string());
-        file_types.insert("fb2zip".to_string());
+        for file_type in book.available_types {
+            file_types.insert(file_type);
+        }
     }
 
     Json::<Vec<String>>(file_types.into_iter().collect())
@@ -145,14 +202,27 @@ async fn search_translators(
     let total = result.estimated_total_hits.unwrap();
     let translator_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
-    let mut translators = db
-        .author()
-        .find_many(vec![author::id::in_vec(translator_ids.clone())])
-        .with(author::author_annotation::fetch())
-        .order_by(author::id::order(prisma_client_rust::Direction::Asc))
-        .exec()
-        .await
-        .unwrap();
+    let mut translators = sqlx::query_as!(
+        Author,
+        r#"
+        SELECT
+            a.id,
+            a.first_name,
+            a.last_name,
+            COALESCE(a.middle_name, '') AS "middle_name!: String",
+            CASE
+                WHEN aa.id IS NOT NULL THEN true
+                ELSE false
+            END AS "annotation_exists!: bool"
+        FROM authors a
+        LEFT JOIN author_annotations aa ON a.id = aa.author
+        WHERE a.id = ANY($1)
+        "#,
+        &translator_ids
+    )
+    .fetch_all(&db.0)
+    .await
+    .unwrap();
 
     translators.sort_by(|a, b| {
         let a_pos = translator_ids.iter().position(|i| *i == a.id).unwrap();
@@ -161,11 +231,7 @@ async fn search_translators(
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Author> = Page::new(
-        translators.iter().map(|item| item.clone().into()).collect(),
-        total.try_into().unwrap(),
-        &pagination,
-    );
+    let page: Page<Author> = Page::new(translators, total.try_into().unwrap(), &pagination);
 
     Json(page)
 }

@@ -1,14 +1,11 @@
+use chrono::NaiveDate;
 use serde::Serialize;
 
-use crate::prisma::book;
+use super::date::naive_date_serializer;
 
-use super::{
-    author::Author,
-    sequence::Sequence,
-    utils::{get_authors, get_available_types, get_sequences},
-};
+use super::{author::Author, sequence::Sequence};
 
-#[derive(Serialize)]
+#[derive(sqlx::FromRow, Serialize)]
 pub struct TranslatorBook {
     pub id: i32,
     pub title: String,
@@ -16,39 +13,9 @@ pub struct TranslatorBook {
     pub file_type: String,
     pub year: i32,
     pub available_types: Vec<String>,
-    pub uploaded: String,
+    #[serde(serialize_with = "naive_date_serializer::serialize")]
+    pub uploaded: NaiveDate,
     pub authors: Vec<Author>,
     pub sequences: Vec<Sequence>,
     pub annotation_exists: bool,
-}
-
-impl From<book::Data> for TranslatorBook {
-    fn from(val: book::Data) -> Self {
-        let book::Data {
-            id,
-            title,
-            lang,
-            file_type,
-            year,
-            uploaded,
-            book_authors,
-            book_sequences,
-            book_annotation,
-            source,
-            ..
-        } = val;
-
-        TranslatorBook {
-            id,
-            title,
-            lang,
-            file_type: file_type.clone(),
-            year,
-            available_types: get_available_types(file_type.clone(), source.unwrap().name),
-            uploaded: uploaded.format("%Y-%m-%d").to_string(),
-            authors: get_authors(book_authors),
-            sequences: get_sequences(book_sequences),
-            annotation_exists: book_annotation.unwrap().is_some(),
-        }
-    }
 }

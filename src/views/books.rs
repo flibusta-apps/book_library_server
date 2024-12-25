@@ -5,20 +5,18 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use prisma_client_rust::Direction;
 
 use crate::{
     meilisearch::{get_meili_client, BookMeili},
-    prisma::{
-        author,
-        book::{self},
-        book_annotation, book_author, book_genre, book_sequence, genre, translator,
-    },
     serializers::{
         allowed_langs::AllowedLangs,
+        author::Author,
         book::{BaseBook, Book, BookFilter, DetailBook, RandomBookFilter, RemoteBook},
         book_annotation::BookAnnotation,
+        genre::Genre,
         pagination::{Page, Pagination},
+        sequence::Sequence,
+        source::Source,
     },
 };
 
@@ -29,36 +27,123 @@ pub async fn get_books(
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<BookFilter>,
     pagination: Query<Pagination>,
 ) -> impl IntoResponse {
-    let filter = book_filter.get_filter_vec();
+    let books_count = sqlx::query_scalar!(
+        r#"
+        SELECT COUNT(*) FROM books
+        WHERE lang = ANY($1) AND
+        ($2::boolean IS NULL OR is_deleted = $2) AND
+        ($3::date IS NULL OR uploaded >= $3) AND
+        ($4::date IS NULL OR uploaded <= $4) AND
+        ($5::integer IS NULL OR id >= $5) AND
+        ($6::integer IS NULL OR id <= $6)
+        "#,
+        &book_filter.allowed_langs,
+        book_filter.is_deleted,
+        book_filter.uploaded_gte,
+        book_filter.uploaded_lte,
+        book_filter.id_gte,
+        book_filter.id_lte,
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap()
+    .unwrap();
 
-    let books_count = db.book().count(filter.clone()).exec().await.unwrap();
-
-    let books = db
-        .book()
-        .find_many(filter)
-        .with(book::book_annotation::fetch())
-        .with(book::source::fetch())
-        .with(
-            book::book_authors::fetch(vec![])
-                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(
-            book::translations::fetch(vec![])
-                .with(translator::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
-        .order_by(book::id::order(Direction::Asc))
-        .skip((pagination.page - 1) * pagination.size)
-        .take(pagination.size)
-        .exec()
+    let books = sqlx::query_as!(
+        RemoteBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM book_authors
+                JOIN authors ON authors.id = book_authors.author
+                WHERE book_authors.book = b.id
+            ) AS "authors!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM translations
+                JOIN authors ON authors.id = translations.author
+                WHERE translations.book = b.id
+            ) AS "translators!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', sequences.id,
+                            'name', sequences.name
+                        )
+                    )
+                FROM book_sequences
+                JOIN sequences ON sequences.id = book_sequences.sequence
+                WHERE book_sequences.book = b.id
+            ) AS "sequences!: Vec<Sequence>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool",
+            (
+                SELECT
+                    JSON_BUILD_OBJECT(
+                        'id', sources.id,
+                        'name', sources.name
+                    )
+                FROM sources
+                WHERE sources.id = b.source
+            ) AS "source!: Source",
+            b.remote_id
+        FROM books b
+        WHERE lang = ANY($1) AND
+        ($2::boolean IS NULL OR is_deleted = $2) AND
+        ($3::date IS NULL OR uploaded >= $3) AND
+        ($4::date IS NULL OR uploaded <= $4) AND
+        ($5::integer IS NULL OR id >= $5) AND
+        ($6::integer IS NULL OR id <= $6)
+        ORDER BY b.id ASC
+        OFFSET $7
+        LIMIT $8
+        "#,
+        &book_filter.allowed_langs,
+        book_filter.is_deleted,
+        book_filter.uploaded_gte,
+        book_filter.uploaded_lte,
+        book_filter.id_gte,
+        book_filter.id_lte,
+        (pagination.page - 1) * pagination.size,
+        pagination.size,
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
-    let page: Page<RemoteBook> = Page::new(
-        books.iter().map(|item| item.clone().into()).collect(),
-        books_count,
-        &pagination,
-    );
+    let page: Page<RemoteBook> = Page::new(books, books_count, &pagination);
 
     Json(page)
 }
@@ -68,26 +153,59 @@ pub async fn get_base_books(
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<BookFilter>,
     pagination: Query<Pagination>,
 ) -> impl IntoResponse {
-    let filter = book_filter.get_filter_vec();
+    let books_count = sqlx::query_scalar!(
+        r#"
+        SELECT COUNT(*) FROM books
+        WHERE lang = ANY($1) AND
+        ($2::boolean IS NULL OR is_deleted = $2) AND
+        ($3::date IS NULL OR uploaded >= $3) AND
+        ($4::date IS NULL OR uploaded <= $4) AND
+        ($5::integer IS NULL OR id >= $5) AND
+        ($6::integer IS NULL OR id <= $6)
+        "#,
+        &book_filter.allowed_langs,
+        book_filter.is_deleted,
+        book_filter.uploaded_gte,
+        book_filter.uploaded_lte,
+        book_filter.id_gte,
+        book_filter.id_lte,
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap()
+    .unwrap();
 
-    let books_count = db.book().count(filter.clone()).exec().await.unwrap();
-
-    let books = db
-        .book()
-        .find_many(filter)
-        .with(book::source::fetch())
-        .order_by(book::id::order(Direction::Asc))
-        .skip((pagination.page - 1) * pagination.size)
-        .take(pagination.size)
-        .exec()
+    let books = sqlx::query_as!(
+        BaseBook,
+        r#"
+        SELECT
+            b.id,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>"
+        FROM books b
+        WHERE lang = ANY($1) AND
+        ($2::boolean IS NULL OR is_deleted = $2) AND
+        ($3::date IS NULL OR uploaded >= $3) AND
+        ($4::date IS NULL OR uploaded <= $4) AND
+        ($5::integer IS NULL OR id >= $5) AND
+        ($6::integer IS NULL OR id <= $6)
+        ORDER BY b.id ASC
+        OFFSET $7
+        LIMIT $8
+        "#,
+        &book_filter.allowed_langs,
+        book_filter.is_deleted,
+        book_filter.uploaded_gte,
+        book_filter.uploaded_lte,
+        book_filter.id_gte,
+        book_filter.id_lte,
+        (pagination.page - 1) * pagination.size,
+        pagination.size,
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
-    let page: Page<BaseBook> = Page::new(
-        books.iter().map(|item| item.clone().into()).collect(),
-        books_count,
-        &pagination,
-    );
+    let page: Page<BaseBook> = Page::new(books, books_count, &pagination);
 
     Json(page)
 }
@@ -114,60 +232,217 @@ pub async fn get_random_book(
         get_random_item::<BookMeili>(authors_index, filter).await
     };
 
-    let book = db
-        .book()
-        .find_unique(book::id::equals(book_id))
-        .with(book::book_annotation::fetch())
-        .with(book::source::fetch())
-        .with(
-            book::book_authors::fetch(vec![])
-                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(
-            book::translations::fetch(vec![])
-                .with(translator::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
-        .with(
-            book::book_genres::fetch(vec![])
-                .with(book_genre::genre::fetch().with(genre::source::fetch())),
-        )
-        .exec()
+    let book = sqlx::query_as!(
+        DetailBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM book_authors
+                JOIN authors ON authors.id = book_authors.author
+                WHERE book_authors.book = b.id
+            ) AS "authors!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM translations
+                JOIN authors ON authors.id = translations.author
+                WHERE translations.book = b.id
+            ) AS "translators!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', sequences.id,
+                            'name', sequences.name
+                        )
+                    )
+                FROM book_sequences
+                JOIN sequences ON sequences.id = book_sequences.sequence
+                WHERE book_sequences.book = b.id
+            ) AS "sequences!: Vec<Sequence>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', genres.id,
+                            'code', genres.code,
+                            'description', genres.description,
+                            'meta', genres.meta,
+                            'source', JSON_BUILD_OBJECT(
+                                'id', sources.id,
+                                'name', sources.name
+                            )
+                        )
+                    )
+                FROM book_genres
+                JOIN genres ON genres.id = book_genres.genre
+                JOIN sources ON sources.id = genres.source
+                WHERE book_genres.book = b.id
+            ) AS "genres!: Vec<Genre>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool",
+            (
+                SELECT
+                    JSON_BUILD_OBJECT(
+                        'id', sources.id,
+                        'name', sources.name
+                    )
+                FROM sources
+                WHERE sources.id = b.source
+            ) AS "source!: Source",
+            b.remote_id,
+            b.is_deleted,
+            b.pages
+        FROM books b
+        WHERE b.id = $1
+        "#,
+        book_id
+    )
+        .fetch_optional(&db.0)
         .await
         .unwrap()
         .unwrap();
 
-    Json::<DetailBook>(book.into()).into_response()
+    Json::<DetailBook>(book).into_response()
 }
 
 pub async fn get_remote_book(
     db: Database,
-    Path((source_id, remote_id)): Path<(i32, i32)>,
+    Path((source_id, remote_id)): Path<(i16, i32)>,
 ) -> impl IntoResponse {
-    let book = db
-        .book()
-        .find_unique(book::source_id_remote_id(source_id, remote_id))
-        .with(book::book_annotation::fetch())
-        .with(book::source::fetch())
-        .with(
-            book::book_authors::fetch(vec![])
-                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(
-            book::translations::fetch(vec![])
-                .with(translator::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
-        .with(
-            book::book_genres::fetch(vec![])
-                .with(book_genre::genre::fetch().with(genre::source::fetch())),
-        )
-        .exec()
+    let book = sqlx::query_as!(
+        DetailBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM book_authors
+                JOIN authors ON authors.id = book_authors.author
+                WHERE book_authors.book = b.id
+            ) AS "authors!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM translations
+                JOIN authors ON authors.id = translations.author
+                WHERE translations.book = b.id
+            ) AS "translators!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', sequences.id,
+                            'name', sequences.name
+                        )
+                    )
+                FROM book_sequences
+                JOIN sequences ON sequences.id = book_sequences.sequence
+                WHERE book_sequences.book = b.id
+            ) AS "sequences!: Vec<Sequence>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', genres.id,
+                            'code', genres.code,
+                            'description', genres.description,
+                            'meta', genres.meta,
+                            'source', JSON_BUILD_OBJECT(
+                                'id', sources.id,
+                                'name', sources.name
+                            )
+                        )
+                    )
+                FROM book_genres
+                JOIN genres ON genres.id = book_genres.genre
+                JOIN sources ON sources.id = genres.source
+                WHERE book_genres.book = b.id
+            ) AS "genres!: Vec<Genre>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool",
+            (
+                SELECT
+                    JSON_BUILD_OBJECT(
+                        'id', sources.id,
+                        'name', sources.name
+                    )
+                FROM sources
+                WHERE sources.id = b.source
+            ) AS "source!: Source",
+            b.remote_id,
+            b.is_deleted,
+            b.pages
+        FROM books b
+        WHERE b.source = $1 AND b.remote_id = $2
+        "#,
+        source_id,
+        remote_id
+    )
+        .fetch_optional(&db.0)
         .await
         .unwrap();
 
     match book {
-        Some(book) => Json::<DetailBook>(book.into()).into_response(),
+        Some(book) => Json::<DetailBook>(book).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }
@@ -203,21 +478,72 @@ pub async fn search_books(
     let total = result.estimated_total_hits.unwrap();
     let book_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
-    let mut books = db
-        .book()
-        .find_many(vec![book::id::in_vec(book_ids.clone())])
-        .with(book::book_annotation::fetch())
-        .with(book::source::fetch())
-        .with(
-            book::book_authors::fetch(vec![])
-                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(
-            book::translations::fetch(vec![])
-                .with(translator::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
-        .exec()
+    let mut books = sqlx::query_as!(
+        Book,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM book_authors
+                JOIN authors ON authors.id = book_authors.author
+                WHERE book_authors.book = b.id
+            ) AS "authors!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM translations
+                JOIN authors ON authors.id = translations.author
+                WHERE translations.book = b.id
+            ) AS "translators!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', sequences.id,
+                            'name', sequences.name
+                        )
+                    )
+                FROM book_sequences
+                JOIN sequences ON sequences.id = book_sequences.sequence
+                WHERE book_sequences.book = b.id
+            ) AS "sequences!: Vec<Sequence>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool"
+        FROM books b
+        WHERE b.id = ANY($1)
+        "#,
+        &book_ids
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
@@ -228,54 +554,138 @@ pub async fn search_books(
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Book> = Page::new(
-        books.iter().map(|item| item.clone().into()).collect(),
-        total.try_into().unwrap(),
-        &pagination,
-    );
+    let page: Page<Book> = Page::new(books, total.try_into().unwrap(), &pagination);
 
     Json(page)
 }
 
 pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoResponse {
-    let book = db
-        .book()
-        .find_unique(book::id::equals(book_id))
-        .with(book::book_annotation::fetch())
-        .with(book::source::fetch())
-        .with(
-            book::book_authors::fetch(vec![])
-                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(
-            book::translations::fetch(vec![])
-                .with(translator::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![]).with(book_sequence::sequence::fetch()))
-        .with(
-            book::book_genres::fetch(vec![])
-                .with(book_genre::genre::fetch().with(genre::source::fetch())),
-        )
-        .exec()
+    let book = sqlx::query_as!(
+        DetailBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM book_authors
+                JOIN authors ON authors.id = book_authors.author
+                WHERE book_authors.book = b.id
+            ) AS "authors!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM translations
+                JOIN authors ON authors.id = translations.author
+                WHERE translations.book = b.id
+            ) AS "translators!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', sequences.id,
+                            'name', sequences.name
+                        )
+                    )
+                FROM book_sequences
+                JOIN sequences ON sequences.id = book_sequences.sequence
+                WHERE book_sequences.book = b.id
+            ) AS "sequences!: Vec<Sequence>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', genres.id,
+                            'code', genres.code,
+                            'description', genres.description,
+                            'meta', genres.meta,
+                            'source', JSON_BUILD_OBJECT(
+                                'id', sources.id,
+                                'name', sources.name
+                            )
+                        )
+                    )
+                FROM book_genres
+                JOIN genres ON genres.id = book_genres.genre
+                JOIN sources ON sources.id = genres.source
+                WHERE book_genres.book = b.id
+            ) AS "genres!: Vec<Genre>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool",
+            (
+                SELECT
+                    JSON_BUILD_OBJECT(
+                        'id', sources.id,
+                        'name', sources.name
+                    )
+                FROM sources
+                WHERE sources.id = b.source
+            ) AS "source!: Source",
+            b.remote_id,
+            b.is_deleted,
+            b.pages
+        FROM books b
+        WHERE b.id = $1
+        "#,
+        book_id
+    )
+        .fetch_optional(&db.0)
         .await
         .unwrap();
 
     match book {
-        Some(book) => Json::<DetailBook>(book.into()).into_response(),
+        Some(book) => Json::<DetailBook>(book).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
 pub async fn get_book_annotation(db: Database, Path(book_id): Path<i32>) -> impl IntoResponse {
-    let book_annotation = db
-        .book_annotation()
-        .find_unique(book_annotation::book_id::equals(book_id))
-        .exec()
-        .await
-        .unwrap();
+    let book_annotation = sqlx::query_as!(
+        BookAnnotation,
+        r#"
+        SELECT
+            id,
+            title,
+            text,
+            file
+        FROM book_annotations
+        WHERE book = $1
+        "#,
+        book_id
+    )
+    .fetch_optional(&db.0)
+    .await
+    .unwrap();
 
     match book_annotation {
-        Some(book_annotation) => Json::<BookAnnotation>(book_annotation.into()).into_response(),
+        Some(book_annotation) => Json::<BookAnnotation>(book_annotation).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }

@@ -10,9 +10,10 @@ use axum::{
 
 use crate::{
     meilisearch::{get_meili_client, SequenceMeili},
-    prisma::{author, book, book_author, book_sequence, sequence, translator},
     serializers::{
         allowed_langs::AllowedLangs,
+        author::Author,
+        book::BaseBook,
         pagination::{Page, PageWithParent, Pagination},
         sequence::{Sequence, SequenceBook},
     },
@@ -36,15 +37,18 @@ async fn get_random_sequence(
         get_random_item::<SequenceMeili>(authors_index, filter).await
     };
 
-    let sequence = db
-        .sequence()
-        .find_unique(sequence::id::equals(sequence_id))
-        .exec()
-        .await
-        .unwrap()
-        .unwrap();
+    let sequence = sqlx::query_as!(
+        Sequence,
+        r#"
+        SELECT id, name FROM sequences WHERE id = $1
+        "#,
+        sequence_id
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap();
 
-    Json::<Sequence>(sequence.into())
+    Json::<Sequence>(sequence)
 }
 
 async fn search_sequence(
@@ -78,12 +82,16 @@ async fn search_sequence(
     let total = result.estimated_total_hits.unwrap();
     let sequence_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
-    let mut sequences = db
-        .sequence()
-        .find_many(vec![sequence::id::in_vec(sequence_ids.clone())])
-        .exec()
-        .await
-        .unwrap();
+    let mut sequences = sqlx::query_as!(
+        Sequence,
+        r#"
+        SELECT id, name FROM sequences WHERE id = ANY($1)
+        "#,
+        &sequence_ids
+    )
+    .fetch_all(&db.0)
+    .await
+    .unwrap();
 
     sequences.sort_by(|a, b| {
         let a_pos = sequence_ids.iter().position(|i| *i == a.id).unwrap();
@@ -92,25 +100,25 @@ async fn search_sequence(
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Sequence> = Page::new(
-        sequences.iter().map(|item| item.clone().into()).collect(),
-        total.try_into().unwrap(),
-        &pagination,
-    );
+    let page: Page<Sequence> = Page::new(sequences, total.try_into().unwrap(), &pagination);
 
     Json(page)
 }
 
 async fn get_sequence(db: Database, Path(sequence_id): Path<i32>) -> impl IntoResponse {
-    let sequence = db
-        .sequence()
-        .find_unique(sequence::id::equals(sequence_id))
-        .exec()
-        .await
-        .unwrap();
+    let sequence = sqlx::query_as!(
+        Sequence,
+        r#"
+        SELECT id, name FROM sequences WHERE id = $1
+        "#,
+        sequence_id
+    )
+    .fetch_optional(&db.0)
+    .await
+    .unwrap();
 
     match sequence {
-        Some(sequence) => Json::<Sequence>(sequence.into()).into_response(),
+        Some(sequence) => Json::<Sequence>(sequence).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }
@@ -122,27 +130,34 @@ async fn get_sequence_available_types(
         AllowedLangs,
     >,
 ) -> impl IntoResponse {
-    let books = db
-        .book()
-        .find_many(vec![
-            book::is_deleted::equals(false),
-            book::book_sequences::some(vec![book_sequence::sequence_id::equals(sequence_id)]),
-            book::lang::in_vec(allowed_langs),
-        ])
-        .exec()
+    // TODO: refactor
+
+    let books = sqlx::query_as!(
+        BaseBook,
+        r#"
+        SELECT
+            b.id,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>"
+        FROM books b
+        JOIN book_sequences bs ON b.id = bs.book
+        WHERE
+            b.is_deleted = FALSE AND
+            bs.sequence = $1 AND
+            b.lang = ANY($2)
+        "#,
+        sequence_id,
+        &allowed_langs
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
     let mut file_types: HashSet<String> = HashSet::new();
 
     for book in books {
-        file_types.insert(book.file_type.clone());
-    }
-
-    if file_types.contains("fb2") {
-        file_types.insert("epub".to_string());
-        file_types.insert("mobi".to_string());
-        file_types.insert("fb2zip".to_string());
+        for file_type in book.available_types {
+            file_types.insert(file_type);
+        }
     }
 
     Json::<Vec<String>>(file_types.into_iter().collect())
@@ -156,83 +171,137 @@ async fn get_sequence_books(
     >,
     pagination: Query<Pagination>,
 ) -> impl IntoResponse {
-    let sequence = db
-        .sequence()
-        .find_unique(sequence::id::equals(sequence_id))
-        .exec()
-        .await
-        .unwrap();
+    let sequence = sqlx::query_as!(
+        Sequence,
+        r#"
+        SELECT id, name FROM sequences WHERE id = $1
+        "#,
+        sequence_id
+    )
+    .fetch_optional(&db.0)
+    .await
+    .unwrap();
 
     let sequence = match sequence {
         Some(v) => v,
         None => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    let books_filter = vec![
-        book_sequence::book::is(vec![
-            book::is_deleted::equals(false),
-            book::lang::in_vec(allowed_langs.clone()),
-        ]),
-        book_sequence::sequence_id::equals(sequence.id),
-    ];
+    // let books_filter = vec![
+    //     book_sequence::book::is(vec![
+    //         book::is_deleted::equals(false),
+    //         book::lang::in_vec(allowed_langs.clone()),
+    //     ]),
+    //     book_sequence::sequence_id::equals(sequence.id),
+    // ];
 
-    let books_count = db
-        .book_sequence()
-        .count(books_filter.clone())
-        .exec()
+    let books_count = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM book_sequences bs
+        JOIN books b ON b.id = bs.book
+        WHERE
+            b.is_deleted = FALSE AND
+            bs.sequence = $1 AND
+            b.lang = ANY($2)",
+        sequence.id,
+        &allowed_langs
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap()
+    .unwrap();
+
+    let mut books = sqlx::query_as!(
+        SequenceBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip'] ELSE ARRAY[b.file_type] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM book_authors
+                JOIN authors ON authors.id = book_authors.author
+                WHERE book_authors.book = b.id
+            ) AS "authors!: Vec<Author>",
+            (
+                SELECT
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', authors.id,
+                            'first_name', authors.first_name,
+                            'last_name', authors.last_name,
+                            'middle_name', authors.middle_name,
+                            'annotation_exists', EXISTS(
+                                SELECT * FROM author_annotations WHERE author = authors.id
+                            )
+                        )
+                    )
+                FROM translations
+                JOIN authors ON authors.id = translations.author
+                WHERE translations.book = b.id
+            ) AS "translators!: Vec<Author>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool",
+            bs.position
+        FROM books b
+        JOIN book_sequences bs ON b.id = bs.book
+        WHERE
+            b.is_deleted = FALSE AND
+            bs.sequence = $1 AND
+            b.lang = ANY($2)
+        ORDER BY bs.position
+        LIMIT $3 OFFSET $4
+        "#,
+        sequence.id,
+        &allowed_langs,
+        pagination.size,
+        (pagination.page - 1) * pagination.size,
+    )
+        .fetch_all(&db.0)
         .await
         .unwrap();
 
-    let book_sequences = db
-        .book_sequence()
-        .find_many(vec![
-            book_sequence::book::is(vec![
-                book::is_deleted::equals(false),
-                book::lang::in_vec(allowed_langs.clone()),
-            ]),
-            book_sequence::sequence_id::equals(sequence.id),
-        ])
-        .order_by(book_sequence::position::order(
-            prisma_client_rust::Direction::Asc,
-        ))
-        .skip((pagination.page - 1) * pagination.size)
-        .take(pagination.size)
-        .exec()
-        .await
-        .unwrap();
+    // let books = db
+    //     .book()
+    //     .find_many(vec![book::id::in_vec(book_ids)])
+    //     .with(book::source::fetch())
+    //     .with(book::book_annotation::fetch())
+    //     .with(
+    //         book::book_authors::fetch(vec![])
+    //             .with(book_author::author::fetch().with(author::author_annotation::fetch())),
+    //     )
+    //     .with(
+    //         book::translations::fetch(vec![])
+    //             .with(translator::author::fetch().with(author::author_annotation::fetch())),
+    //     )
+    //     .with(book::book_sequences::fetch(vec![
+    //         book_sequence::sequence_id::equals(sequence.id),
+    //     ]))
+    //     .order_by(book::id::order(prisma_client_rust::Direction::Asc))
+    //     .exec()
+    //     .await
+    //     .unwrap();
 
-    let book_ids: Vec<i32> = book_sequences.iter().map(|a| a.book_id).collect();
-
-    let books = db
-        .book()
-        .find_many(vec![book::id::in_vec(book_ids)])
-        .with(book::source::fetch())
-        .with(book::book_annotation::fetch())
-        .with(
-            book::book_authors::fetch(vec![])
-                .with(book_author::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(
-            book::translations::fetch(vec![])
-                .with(translator::author::fetch().with(author::author_annotation::fetch())),
-        )
-        .with(book::book_sequences::fetch(vec![
-            book_sequence::sequence_id::equals(sequence.id),
-        ]))
-        .order_by(book::id::order(prisma_client_rust::Direction::Asc))
-        .exec()
-        .await
-        .unwrap();
-
-    let mut sequence_books = books
-        .iter()
-        .map(|item| item.clone().into())
-        .collect::<Vec<SequenceBook>>();
-
-    sequence_books.sort_by(|a, b| a.position.cmp(&b.position));
+    books.sort_by(|a, b| a.position.cmp(&b.position));
 
     let page: PageWithParent<SequenceBook, Sequence> =
-        PageWithParent::new(sequence.into(), sequence_books, books_count, &pagination);
+        PageWithParent::new(sequence, books, books_count, &pagination);
 
     Json(page).into_response()
 }
