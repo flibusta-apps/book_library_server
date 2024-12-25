@@ -39,7 +39,7 @@ pub async fn get_genres(
             genres.meta,
             (
                 SELECT
-                    JSON_BUILD_OBJECT(
+                    JSONB_BUILD_OBJECT(
                         'id', sources.id,
                         'name', sources.name
                     )
@@ -76,7 +76,7 @@ pub async fn get_genre_metas(db: Database) -> impl IntoResponse {
             genres.meta,
             (
                 SELECT
-                    JSON_BUILD_OBJECT(
+                    JSONB_BUILD_OBJECT(
                         'id', sources.id,
                         'name', sources.name
                     )

@@ -81,8 +81,8 @@ pub struct Book {
     pub available_types: Vec<String>,
     #[serde(serialize_with = "naive_date_serializer::serialize")]
     pub uploaded: NaiveDate,
-    pub authors: Vec<Author>,
-    pub translators: Vec<Author>,
-    pub sequences: Vec<Sequence>,
+    pub authors: sqlx::types::Json<Vec<Author>>,
+    pub translators: sqlx::types::Json<Vec<Author>>,
+    pub sequences: sqlx::types::Json<Vec<Sequence>>,
     pub annotation_exists: bool,
 }

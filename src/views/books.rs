@@ -62,8 +62,8 @@ pub async fn get_books(
             b.uploaded,
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -79,8 +79,8 @@ pub async fn get_books(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -96,8 +96,8 @@ pub async fn get_books(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', sequences.id,
                             'name', sequences.name
                         )
@@ -111,7 +111,7 @@ pub async fn get_books(
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSON_BUILD_OBJECT(
+                    JSONB_BUILD_OBJECT(
                         'id', sources.id,
                         'name', sources.name
                     )
@@ -245,8 +245,8 @@ pub async fn get_random_book(
             b.uploaded,
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -262,8 +262,8 @@ pub async fn get_random_book(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -279,8 +279,8 @@ pub async fn get_random_book(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', sequences.id,
                             'name', sequences.name
                         )
@@ -291,13 +291,13 @@ pub async fn get_random_book(
             ) AS "sequences!: Vec<Sequence>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', genres.id,
                             'code', genres.code,
                             'description', genres.description,
                             'meta', genres.meta,
-                            'source', JSON_BUILD_OBJECT(
+                            'source', JSONB_BUILD_OBJECT(
                                 'id', sources.id,
                                 'name', sources.name
                             )
@@ -313,7 +313,7 @@ pub async fn get_random_book(
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSON_BUILD_OBJECT(
+                    JSONB_BUILD_OBJECT(
                         'id', sources.id,
                         'name', sources.name
                     )
@@ -353,8 +353,8 @@ pub async fn get_remote_book(
             b.uploaded,
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -370,8 +370,8 @@ pub async fn get_remote_book(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -387,8 +387,8 @@ pub async fn get_remote_book(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', sequences.id,
                             'name', sequences.name
                         )
@@ -399,13 +399,13 @@ pub async fn get_remote_book(
             ) AS "sequences!: Vec<Sequence>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', genres.id,
                             'code', genres.code,
                             'description', genres.description,
                             'meta', genres.meta,
-                            'source', JSON_BUILD_OBJECT(
+                            'source', JSONB_BUILD_OBJECT(
                                 'id', sources.id,
                                 'name', sources.name
                             )
@@ -421,7 +421,7 @@ pub async fn get_remote_book(
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSON_BUILD_OBJECT(
+                    JSONB_BUILD_OBJECT(
                         'id', sources.id,
                         'name', sources.name
                     )
@@ -491,8 +491,8 @@ pub async fn search_books(
             b.uploaded,
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -508,8 +508,8 @@ pub async fn search_books(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -525,8 +525,8 @@ pub async fn search_books(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', sequences.id,
                             'name', sequences.name
                         )
@@ -573,8 +573,8 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             b.uploaded,
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -590,8 +590,8 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -607,8 +607,8 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', sequences.id,
                             'name', sequences.name
                         )
@@ -619,13 +619,13 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "sequences!: Vec<Sequence>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', genres.id,
                             'code', genres.code,
                             'description', genres.description,
                             'meta', genres.meta,
-                            'source', JSON_BUILD_OBJECT(
+                            'source', JSONB_BUILD_OBJECT(
                                 'id', sources.id,
                                 'name', sources.name
                             )
@@ -641,7 +641,7 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSON_BUILD_OBJECT(
+                    JSONB_BUILD_OBJECT(
                         'id', sources.id,
                         'name', sources.name
                     )

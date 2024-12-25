@@ -88,8 +88,8 @@ async fn get_translated_books(
             b.uploaded,
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', authors.id,
                             'first_name', authors.first_name,
                             'last_name', authors.last_name,
@@ -105,8 +105,8 @@ async fn get_translated_books(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                    JSONB_AGG(
+                        JSONB_BUILD_OBJECT(
                             'id', sequences.id,
                             'name', sequences.name
                         )

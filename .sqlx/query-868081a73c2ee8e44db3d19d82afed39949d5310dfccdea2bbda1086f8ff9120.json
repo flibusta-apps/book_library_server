@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            genres.id,\n            genres.remote_id,\n            genres.code,\n            genres.description,\n            genres.meta,\n            (\n                SELECT\n                    JSON_BUILD_OBJECT(\n                        'id', sources.id,\n                        'name', sources.name\n                    )\n                FROM sources\n                WHERE sources.id = genres.source\n            ) AS \"source!: Source\"\n        FROM genres\n        WHERE (meta = $1 OR $1 IS NULL)\n        ORDER BY genres.id ASC\n        LIMIT $2 OFFSET $3\n        ",
+  "query": "\n        SELECT\n            genres.id,\n            genres.remote_id,\n            genres.code,\n            genres.description,\n            genres.meta,\n            (\n                SELECT\n                    JSONB_BUILD_OBJECT(\n                        'id', sources.id,\n                        'name', sources.name\n                    )\n                FROM sources\n                WHERE sources.id = genres.source\n            ) AS \"source!: Source\"\n        FROM genres\n        WHERE (meta = $1 OR $1 IS NULL)\n        ORDER BY genres.id ASC\n        LIMIT $2 OFFSET $3\n        ",
   "describe": {
     "columns": [
       {
@@ -31,7 +31,7 @@
       {
         "ordinal": 5,
         "name": "source!: Source",
-        "type_info": "Json"
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -50,5 +50,5 @@
       null
     ]
   },
-  "hash": "daada7d7552a41a8d44a4f7b3d62bc804f3f4944166d8e168e1a3a91f2ff4bc9"
+  "hash": "868081a73c2ee8e44db3d19d82afed39949d5310dfccdea2bbda1086f8ff9120"
 }
