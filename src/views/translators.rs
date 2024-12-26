@@ -125,7 +125,18 @@ async fn get_translated_books(
                 SELECT * FROM book_annotations WHERE book = b.id
             ) AS "annotation_exists!: bool"
         FROM books b
+        JOIN book_authors ba ON b.id = ba.book
+        WHERE
+            b.is_deleted = false
+            AND ba.author = $1
+            AND b.lang = ANY($2)
+        OFFSET $3
+        LIMIT $4
         "#,
+        translator_id,
+        &allowed_langs,
+        (pagination.page - 1) * pagination.size,
+        pagination.size
     )
         .fetch_all(&db.0)
         .await
