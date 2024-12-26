@@ -39,10 +39,10 @@ pub async fn get_genres(
             genres.meta,
             (
                 SELECT
-                    JSONB_BUILD_OBJECT(
-                        'id', sources.id,
-                        'name', sources.name
-                    )
+                    ROW(
+                        sources.id,
+                        sources.name
+                    )::source_type
                 FROM sources
                 WHERE sources.id = genres.source
             ) AS "source!: Source"
@@ -76,10 +76,10 @@ pub async fn get_genre_metas(db: Database) -> impl IntoResponse {
             genres.meta,
             (
                 SELECT
-                    JSONB_BUILD_OBJECT(
-                        'id', sources.id,
-                        'name', sources.name
-                    )
+                    ROW(
+                        sources.id,
+                        sources.name
+                    )::source_type
                 FROM sources
                 WHERE sources.id = genres.source
             ) AS "source!: Source"

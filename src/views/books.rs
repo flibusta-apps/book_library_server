@@ -62,16 +62,16 @@ pub async fn get_books(
             b.uploaded,
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM book_authors
                 JOIN authors ON authors.id = book_authors.author
@@ -79,16 +79,16 @@ pub async fn get_books(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM translations
                 JOIN authors ON authors.id = translations.author
@@ -96,11 +96,11 @@ pub async fn get_books(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', sequences.id,
-                            'name', sequences.name
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            sequences.id,
+                            sequences.name
+                        )::sequence_type
                     )
                 FROM book_sequences
                 JOIN sequences ON sequences.id = book_sequences.sequence
@@ -111,10 +111,10 @@ pub async fn get_books(
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSONB_BUILD_OBJECT(
-                        'id', sources.id,
-                        'name', sources.name
-                    )
+                    ROW(
+                        sources.id,
+                        sources.name
+                    )::source_type
                 FROM sources
                 WHERE sources.id = b.source
             ) AS "source!: Source",
@@ -245,16 +245,16 @@ pub async fn get_random_book(
             b.uploaded,
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM book_authors
                 JOIN authors ON authors.id = book_authors.author
@@ -262,16 +262,16 @@ pub async fn get_random_book(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM translations
                 JOIN authors ON authors.id = translations.author
@@ -279,11 +279,11 @@ pub async fn get_random_book(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', sequences.id,
-                            'name', sequences.name
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            sequences.id,
+                            sequences.name
+                        )::sequence_type
                     )
                 FROM book_sequences
                 JOIN sequences ON sequences.id = book_sequences.sequence
@@ -291,17 +291,18 @@ pub async fn get_random_book(
             ) AS "sequences!: Vec<Sequence>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', genres.id,
-                            'code', genres.code,
-                            'description', genres.description,
-                            'meta', genres.meta,
-                            'source', JSONB_BUILD_OBJECT(
-                                'id', sources.id,
-                                'name', sources.name
-                            )
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            genres.id,
+                            ROW(
+                                sources.id,
+                                sources.name
+                            )::source_type,
+                            genres.remote_id,
+                            genres.code,
+                            genres.description,
+                            genres.meta
+                        )::genre_type
                     )
                 FROM book_genres
                 JOIN genres ON genres.id = book_genres.genre
@@ -313,10 +314,10 @@ pub async fn get_random_book(
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSONB_BUILD_OBJECT(
-                        'id', sources.id,
-                        'name', sources.name
-                    )
+                    ROW(
+                        sources.id,
+                        sources.name
+                    )::source_type
                 FROM sources
                 WHERE sources.id = b.source
             ) AS "source!: Source",
@@ -353,16 +354,16 @@ pub async fn get_remote_book(
             b.uploaded,
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM book_authors
                 JOIN authors ON authors.id = book_authors.author
@@ -370,16 +371,16 @@ pub async fn get_remote_book(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM translations
                 JOIN authors ON authors.id = translations.author
@@ -387,11 +388,11 @@ pub async fn get_remote_book(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', sequences.id,
-                            'name', sequences.name
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            sequences.id,
+                            sequences.name
+                        )::sequence_type
                     )
                 FROM book_sequences
                 JOIN sequences ON sequences.id = book_sequences.sequence
@@ -399,17 +400,18 @@ pub async fn get_remote_book(
             ) AS "sequences!: Vec<Sequence>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', genres.id,
-                            'code', genres.code,
-                            'description', genres.description,
-                            'meta', genres.meta,
-                            'source', JSONB_BUILD_OBJECT(
-                                'id', sources.id,
-                                'name', sources.name
-                            )
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            genres.id,
+                            ROW(
+                                sources.id,
+                                sources.name
+                            )::source_type,
+                            remote_id,
+                            genres.code,
+                            genres.description,
+                            genres.meta
+                        )::genre_type
                     )
                 FROM book_genres
                 JOIN genres ON genres.id = book_genres.genre
@@ -421,10 +423,10 @@ pub async fn get_remote_book(
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSONB_BUILD_OBJECT(
-                        'id', sources.id,
-                        'name', sources.name
-                    )
+                    ROW(
+                        sources.id,
+                        sources.name
+                    )::source_type
                 FROM sources
                 WHERE sources.id = b.source
             ) AS "source!: Source",
@@ -491,16 +493,16 @@ pub async fn search_books(
             b.uploaded,
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM book_authors
                 JOIN authors ON authors.id = book_authors.author
@@ -508,16 +510,16 @@ pub async fn search_books(
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM translations
                 JOIN authors ON authors.id = translations.author
@@ -525,11 +527,11 @@ pub async fn search_books(
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', sequences.id,
-                            'name', sequences.name
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            sequences.id,
+                            sequences.name
+                        )::sequence_type
                     )
                 FROM book_sequences
                 JOIN sequences ON sequences.id = book_sequences.sequence
@@ -573,16 +575,16 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             b.uploaded,
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM book_authors
                 JOIN authors ON authors.id = book_authors.author
@@ -590,16 +592,16 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "authors!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', authors.id,
-                            'first_name', authors.first_name,
-                            'last_name', authors.last_name,
-                            'middle_name', authors.middle_name,
-                            'annotation_exists', EXISTS(
+                    ARRAY_AGG(
+                        ROW(
+                            authors.id,
+                            authors.first_name,
+                            authors.last_name,
+                            authors.middle_name,
+                            EXISTS(
                                 SELECT * FROM author_annotations WHERE author = authors.id
                             )
-                        )
+                        )::author_type
                     )
                 FROM translations
                 JOIN authors ON authors.id = translations.author
@@ -607,11 +609,11 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "translators!: Vec<Author>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', sequences.id,
-                            'name', sequences.name
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            sequences.id,
+                            sequences.name
+                        )::sequence_type
                     )
                 FROM book_sequences
                 JOIN sequences ON sequences.id = book_sequences.sequence
@@ -619,17 +621,18 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "sequences!: Vec<Sequence>",
             (
                 SELECT
-                    JSONB_AGG(
-                        JSONB_BUILD_OBJECT(
-                            'id', genres.id,
-                            'code', genres.code,
-                            'description', genres.description,
-                            'meta', genres.meta,
-                            'source', JSONB_BUILD_OBJECT(
-                                'id', sources.id,
-                                'name', sources.name
-                            )
-                        )
+                    ARRAY_AGG(
+                        ROW(
+                            genres.id,
+                            ROW(
+                                sources.id,
+                                sources.name
+                            )::source_type,
+                            genres.remote_id,
+                            genres.code,
+                            genres.description,
+                            genres.meta
+                        )::genre_type
                     )
                 FROM book_genres
                 JOIN genres ON genres.id = book_genres.genre
@@ -641,10 +644,10 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             ) AS "annotation_exists!: bool",
             (
                 SELECT
-                    JSONB_BUILD_OBJECT(
-                        'id', sources.id,
-                        'name', sources.name
-                    )
+                    ROW(
+                        sources.id,
+                        sources.name
+                    )::source_type
                 FROM sources
                 WHERE sources.id = b.source
             ) AS "source!: Source",

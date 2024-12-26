@@ -1,0 +1,175 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            b.id,\n            b.title,\n            b.lang,\n            b.file_type,\n            b.year,\n            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS \"available_types!: Vec<String>\",\n            b.uploaded,\n            (\n                SELECT\n                    ARRAY_AGG(\n                        ROW(\n                            authors.id,\n                            authors.first_name,\n                            authors.last_name,\n                            authors.middle_name,\n                            EXISTS(\n                                SELECT * FROM author_annotations WHERE author = authors.id\n                            )\n                        )::author_type\n                    )\n                FROM book_authors\n                JOIN authors ON authors.id = book_authors.author\n                WHERE book_authors.book = b.id\n            ) AS \"authors!: Vec<Author>\",\n            (\n                SELECT\n                    ARRAY_AGG(\n                        ROW(\n                            authors.id,\n                            authors.first_name,\n                            authors.last_name,\n                            authors.middle_name,\n                            EXISTS(\n                                SELECT * FROM author_annotations WHERE author = authors.id\n                            )\n                        )::author_type\n                    )\n                FROM translations\n                JOIN authors ON authors.id = translations.author\n                WHERE translations.book = b.id\n            ) AS \"translators!: Vec<Author>\",\n            (\n                SELECT\n                    ARRAY_AGG(\n                        ROW(\n                            sequences.id,\n                            sequences.name\n                        )::sequence_type\n                    )\n                FROM book_sequences\n                JOIN sequences ON sequences.id = book_sequences.sequence\n                WHERE book_sequences.book = b.id\n            ) AS \"sequences!: Vec<Sequence>\",\n            EXISTS(\n                SELECT * FROM book_annotations WHERE book = b.id\n            ) AS \"annotation_exists!: bool\"\n        FROM books b\n        WHERE b.id = ANY($1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "lang",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "year",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 5,
+        "name": "available_types!: Vec<String>",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 6,
+        "name": "uploaded",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 7,
+        "name": "authors!: Vec<Author>",
+        "type_info": {
+          "Custom": {
+            "name": "author_type[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "author_type",
+                  "kind": {
+                    "Composite": [
+                      [
+                        "id",
+                        "Int4"
+                      ],
+                      [
+                        "first_name",
+                        "Varchar"
+                      ],
+                      [
+                        "last_name",
+                        "Varchar"
+                      ],
+                      [
+                        "middle_name",
+                        "Varchar"
+                      ],
+                      [
+                        "annotation_exists",
+                        "Bool"
+                      ]
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "translators!: Vec<Author>",
+        "type_info": {
+          "Custom": {
+            "name": "author_type[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "author_type",
+                  "kind": {
+                    "Composite": [
+                      [
+                        "id",
+                        "Int4"
+                      ],
+                      [
+                        "first_name",
+                        "Varchar"
+                      ],
+                      [
+                        "last_name",
+                        "Varchar"
+                      ],
+                      [
+                        "middle_name",
+                        "Varchar"
+                      ],
+                      [
+                        "annotation_exists",
+                        "Bool"
+                      ]
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "sequences!: Vec<Sequence>",
+        "type_info": {
+          "Custom": {
+            "name": "sequence_type[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "sequence_type",
+                  "kind": {
+                    "Composite": [
+                      [
+                        "id",
+                        "Int4"
+                      ],
+                      [
+                        "name",
+                        "Varchar"
+                      ]
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "annotation_exists!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "df1babb391f678c6c4e79a382f43b248c47c57a78620a7147b1f42a886154d8d"
+}

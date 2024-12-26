@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            genres.id,\n            genres.remote_id,\n            genres.code,\n            genres.description,\n            genres.meta,\n            (\n                SELECT\n                    ROW(\n                        sources.id,\n                        sources.name\n                    )::source_type\n                FROM sources\n                WHERE sources.id = genres.source\n            ) AS \"source!: Source\"\n        FROM genres\n        ORDER BY genres.id ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "remote_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "code",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "meta",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "source!: Source",
+        "type_info": {
+          "Custom": {
+            "name": "source_type",
+            "kind": {
+              "Composite": [
+                [
+                  "id",
+                  "Int4"
+                ],
+                [
+                  "name",
+                  "Varchar"
+                ]
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "1f78b5cbdae5f9732e3637fcfd1605477bafc12a443900276c46df644a7f6d26"
+}

@@ -18,6 +18,7 @@ axum = { version = "0.7.9", features = ["json"] }
 axum-extra = { version ="0.9.6", features = ["query"] }
 axum-prometheus = "0.7.0"
 serde = { version = "1.0.216", features = ["derive"] }
+serde_json = { version = "1.0.134", features = ["raw_value"] }
 
 sentry = { version = "0.35.0", features = ["debug-images"] }
 

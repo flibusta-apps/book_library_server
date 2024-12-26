@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::source::Source;
 
 #[derive(sqlx::FromRow, sqlx::Type, Serialize)]
+#[sqlx(type_name = "genre_type")]
 pub struct Genre {
     pub id: i32,
     pub source: Source,
