@@ -60,51 +60,60 @@ pub async fn get_books(
             b.year,
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM book_authors
-                JOIN authors ON authors.id = book_authors.author
-                WHERE book_authors.book = b.id
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM book_authors
+                    JOIN authors ON authors.id = book_authors.author
+                    WHERE book_authors.book = b.id
+                ),
+                ARRAY[]::author_type[]
             ) AS "authors!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM translations
-                JOIN authors ON authors.id = translations.author
-                WHERE translations.book = b.id
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM translations
+                    JOIN authors ON authors.id = translations.author
+                    WHERE translations.book = b.id
+                ),
+                ARRAY[]::author_type[]
             ) AS "translators!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            sequences.id,
-                            sequences.name
-                        )::sequence_type
-                    )
-                FROM book_sequences
-                JOIN sequences ON sequences.id = book_sequences.sequence
-                WHERE book_sequences.book = b.id
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                sequences.id,
+                                sequences.name
+                            )::sequence_type
+                        )
+                    FROM book_sequences
+                    JOIN sequences ON sequences.id = book_sequences.sequence
+                    WHERE book_sequences.book = b.id
+                ),
+                ARRAY[]::sequence_type[]
             ) AS "sequences!: Vec<Sequence>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
@@ -243,71 +252,83 @@ pub async fn get_random_book(
             b.year,
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM book_authors
-                JOIN authors ON authors.id = book_authors.author
-                WHERE book_authors.book = b.id
-            ) AS "authors!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM translations
-                JOIN authors ON authors.id = translations.author
-                WHERE translations.book = b.id
-            ) AS "translators!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            sequences.id,
-                            sequences.name
-                        )::sequence_type
-                    )
-                FROM book_sequences
-                JOIN sequences ON sequences.id = book_sequences.sequence
-                WHERE book_sequences.book = b.id
-            ) AS "sequences!: Vec<Sequence>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            genres.id,
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
                             ROW(
-                                sources.id,
-                                sources.name
-                            )::source_type,
-                            genres.remote_id,
-                            genres.code,
-                            genres.description,
-                            genres.meta
-                        )::genre_type
-                    )
-                FROM book_genres
-                JOIN genres ON genres.id = book_genres.genre
-                JOIN sources ON sources.id = genres.source
-                WHERE book_genres.book = b.id
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM book_authors
+                    JOIN authors ON authors.id = book_authors.author
+                    WHERE book_authors.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "authors!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM translations
+                    JOIN authors ON authors.id = translations.author
+                    WHERE translations.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "translators!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                sequences.id,
+                                sequences.name
+                            )::sequence_type
+                        )
+                    FROM book_sequences
+                    JOIN sequences ON sequences.id = book_sequences.sequence
+                    WHERE book_sequences.book = b.id
+                ),
+                ARRAY[]::sequence_type[]
+            ) AS "sequences!: Vec<Sequence>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                genres.id,
+                                ROW(
+                                    sources.id,
+                                    sources.name
+                                )::source_type,
+                                genres.remote_id,
+                                genres.code,
+                                genres.description,
+                                genres.meta
+                            )::genre_type
+                        )
+                    FROM book_genres
+                    JOIN genres ON genres.id = book_genres.genre
+                    JOIN sources ON sources.id = genres.source
+                    WHERE book_genres.book = b.id
+                ),
+                ARRAY[]::genre_type[]
             ) AS "genres!: Vec<Genre>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
@@ -352,71 +373,83 @@ pub async fn get_remote_book(
             b.year,
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM book_authors
-                JOIN authors ON authors.id = book_authors.author
-                WHERE book_authors.book = b.id
-            ) AS "authors!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM translations
-                JOIN authors ON authors.id = translations.author
-                WHERE translations.book = b.id
-            ) AS "translators!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            sequences.id,
-                            sequences.name
-                        )::sequence_type
-                    )
-                FROM book_sequences
-                JOIN sequences ON sequences.id = book_sequences.sequence
-                WHERE book_sequences.book = b.id
-            ) AS "sequences!: Vec<Sequence>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            genres.id,
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
                             ROW(
-                                sources.id,
-                                sources.name
-                            )::source_type,
-                            remote_id,
-                            genres.code,
-                            genres.description,
-                            genres.meta
-                        )::genre_type
-                    )
-                FROM book_genres
-                JOIN genres ON genres.id = book_genres.genre
-                JOIN sources ON sources.id = genres.source
-                WHERE book_genres.book = b.id
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM book_authors
+                    JOIN authors ON authors.id = book_authors.author
+                    WHERE book_authors.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "authors!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM translations
+                    JOIN authors ON authors.id = translations.author
+                    WHERE translations.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "translators!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                sequences.id,
+                                sequences.name
+                            )::sequence_type
+                        )
+                    FROM book_sequences
+                    JOIN sequences ON sequences.id = book_sequences.sequence
+                    WHERE book_sequences.book = b.id
+                ),
+                ARRAY[]::sequence_type[]
+            ) AS "sequences!: Vec<Sequence>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                genres.id,
+                                ROW(
+                                    sources.id,
+                                    sources.name
+                                )::source_type,
+                                remote_id,
+                                genres.code,
+                                genres.description,
+                                genres.meta
+                            )::genre_type
+                        )
+                    FROM book_genres
+                    JOIN genres ON genres.id = book_genres.genre
+                    JOIN sources ON sources.id = genres.source
+                    WHERE book_genres.book = b.id
+                ),
+                ARRAY[]::genre_type[]
             ) AS "genres!: Vec<Genre>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
@@ -491,51 +524,60 @@ pub async fn search_books(
             b.year,
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM book_authors
-                JOIN authors ON authors.id = book_authors.author
-                WHERE book_authors.book = b.id
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM book_authors
+                    JOIN authors ON authors.id = book_authors.author
+                    WHERE book_authors.book = b.id
+                ),
+                ARRAY[]::author_type[]
             ) AS "authors!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM translations
-                JOIN authors ON authors.id = translations.author
-                WHERE translations.book = b.id
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM translations
+                    JOIN authors ON authors.id = translations.author
+                    WHERE translations.book = b.id
+                ),
+                ARRAY[]::author_type[]
             ) AS "translators!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            sequences.id,
-                            sequences.name
-                        )::sequence_type
-                    )
-                FROM book_sequences
-                JOIN sequences ON sequences.id = book_sequences.sequence
-                WHERE book_sequences.book = b.id
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                sequences.id,
+                                sequences.name
+                            )::sequence_type
+                        )
+                    FROM book_sequences
+                    JOIN sequences ON sequences.id = book_sequences.sequence
+                    WHERE book_sequences.book = b.id
+                ),
+                ARRAY[]::sequence_type[]
             ) AS "sequences!: Vec<Sequence>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
@@ -573,71 +615,83 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
             b.year,
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
             b.uploaded,
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM book_authors
-                JOIN authors ON authors.id = book_authors.author
-                WHERE book_authors.book = b.id
-            ) AS "authors!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            authors.id,
-                            authors.first_name,
-                            authors.last_name,
-                            authors.middle_name,
-                            EXISTS(
-                                SELECT * FROM author_annotations WHERE author = authors.id
-                            )
-                        )::author_type
-                    )
-                FROM translations
-                JOIN authors ON authors.id = translations.author
-                WHERE translations.book = b.id
-            ) AS "translators!: Vec<Author>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            sequences.id,
-                            sequences.name
-                        )::sequence_type
-                    )
-                FROM book_sequences
-                JOIN sequences ON sequences.id = book_sequences.sequence
-                WHERE book_sequences.book = b.id
-            ) AS "sequences!: Vec<Sequence>",
-            (
-                SELECT
-                    ARRAY_AGG(
-                        ROW(
-                            genres.id,
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
                             ROW(
-                                sources.id,
-                                sources.name
-                            )::source_type,
-                            genres.remote_id,
-                            genres.code,
-                            genres.description,
-                            genres.meta
-                        )::genre_type
-                    )
-                FROM book_genres
-                JOIN genres ON genres.id = book_genres.genre
-                JOIN sources ON sources.id = genres.source
-                WHERE book_genres.book = b.id
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM book_authors
+                    JOIN authors ON authors.id = book_authors.author
+                    WHERE book_authors.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "authors!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM translations
+                    JOIN authors ON authors.id = translations.author
+                    WHERE translations.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "translators!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                sequences.id,
+                                sequences.name
+                            )::sequence_type
+                        )
+                    FROM book_sequences
+                    JOIN sequences ON sequences.id = book_sequences.sequence
+                    WHERE book_sequences.book = b.id
+                ),
+                ARRAY[]::sequence_type[]
+            ) AS "sequences!: Vec<Sequence>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                genres.id,
+                                ROW(
+                                    sources.id,
+                                    sources.name
+                                )::source_type,
+                                genres.remote_id,
+                                genres.code,
+                                genres.description,
+                                genres.meta
+                            )::genre_type
+                        )
+                    FROM book_genres
+                    JOIN genres ON genres.id = book_genres.genre
+                    JOIN sources ON sources.id = genres.source
+                    WHERE book_genres.book = b.id
+                ),
+                ARRAY[]::genre_type[]
             ) AS "genres!: Vec<Genre>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
