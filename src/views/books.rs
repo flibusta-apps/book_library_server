@@ -752,8 +752,8 @@ pub async fn get_books_router() -> Router {
         .route("/", get(get_books))
         .route("/base/", get(get_base_books))
         .route("/random", get(get_random_book))
-        .route("/remote/:source_id/:remote_id", get(get_remote_book))
-        .route("/search/:query", get(search_books))
-        .route("/:book_id", get(get_book))
-        .route("/:book_id/annotation", get(get_book_annotation))
+        .route("/remote/{source_id}/{remote_id}", get(get_remote_book))
+        .route("/search/{query}", get(search_books))
+        .route("/{book_id}", get(get_book))
+        .route("/{book_id}/annotation", get(get_book_annotation))
 }

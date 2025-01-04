@@ -255,10 +255,10 @@ async fn search_translators(
 
 pub async fn get_translators_router() -> Router {
     Router::new()
-        .route("/:translator_id/books", get(get_translated_books))
+        .route("/{translator_id}/books", get(get_translated_books))
         .route(
-            "/:translator_id/available_types",
+            "/{translator_id}/available_types",
             get(get_translated_books_available_types),
         )
-        .route("/search/:query", get(search_translators))
+        .route("/search/{query}", get(search_translators))
 }

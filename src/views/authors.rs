@@ -380,12 +380,12 @@ pub async fn get_authors_router() -> Router {
     Router::new()
         .route("/", get(get_authors))
         .route("/random", get(get_random_author))
-        .route("/:author_id", get(get_author))
-        .route("/:author_id/annotation", get(get_author_annotation))
-        .route("/:author_id/books", get(get_author_books))
+        .route("/{author_id}", get(get_author))
+        .route("/{author_id}/annotation", get(get_author_annotation))
+        .route("/{author_id}/books", get(get_author_books))
         .route(
-            "/:author_id/available_types",
+            "/{author_id}/available_types",
             get(get_author_books_available_types),
         )
-        .route("/search/:query", get(search_authors))
+        .route("/search/{query}", get(search_authors))
 }

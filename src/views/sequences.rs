@@ -286,11 +286,11 @@ async fn get_sequence_books(
 pub async fn get_sequences_router() -> Router {
     Router::new()
         .route("/random", get(get_random_sequence))
-        .route("/search/:query", get(search_sequence))
-        .route("/:sequence_id", get(get_sequence))
+        .route("/search/{query}", get(search_sequence))
+        .route("/{sequence_id}", get(get_sequence))
         .route(
-            "/:sequence_id/available_types",
+            "/{sequence_id}/available_types",
             get(get_sequence_available_types),
         )
-        .route("/:sequence_id/books", get(get_sequence_books))
+        .route("/{sequence_id}/books", get(get_sequence_books))
 }
