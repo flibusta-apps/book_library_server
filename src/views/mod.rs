@@ -64,12 +64,9 @@ pub async fn get_router() -> Router {
     let metric_router =
         Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
 
-    Router::new()
-        .nest("/", app_router)
-        .nest("/", metric_router)
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-        )
+    Router::new().merge(app_router).merge(metric_router).layer(
+        TraceLayer::new_for_http()
+            .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+            .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+    )
 }
