@@ -20,7 +20,7 @@ pub struct BookFilter {
     pub id_lte: Option<i32>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 pub struct RemoteBook {
     pub id: i32,
     pub title: String,
