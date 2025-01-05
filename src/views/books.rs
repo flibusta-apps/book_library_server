@@ -27,198 +27,130 @@ pub async fn get_books(
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<BookFilter>,
     pagination: Query<Pagination>,
 ) -> impl IntoResponse {
-    let books_count = {
-        let mut query_builder =
-            sqlx::query_builder::QueryBuilder::new("SELECT COUNT(*) FROM books");
+    let books_count = sqlx::query_scalar!(
+        r#"
+        SELECT COUNT(*) FROM books
+        WHERE lang = ANY($1) AND
+        ($2::boolean IS NULL OR is_deleted = $2) AND
+        ($3::date IS NULL OR uploaded >= $3) AND
+        ($4::date IS NULL OR uploaded <= $4) AND
+        ($5::integer IS NULL OR id >= $5) AND
+        ($6::integer IS NULL OR id <= $6)
+        "#,
+        &book_filter.allowed_langs,
+        book_filter.is_deleted,
+        book_filter.uploaded_gte,
+        book_filter.uploaded_lte,
+        book_filter.id_gte,
+        book_filter.id_lte,
+    )
+    .fetch_one(&db.0)
+    .await
+    .unwrap()
+    .unwrap();
 
-        query_builder.push(" WHERE lang = ANY(?)");
-        query_builder.push_bind(&book_filter.allowed_langs);
-
-        if let Some(is_deleted) = book_filter.is_deleted {
-            query_builder.push(" AND is_deleted = ?");
-            query_builder.push_bind(is_deleted);
-        }
-
-        match (book_filter.uploaded_gte, book_filter.uploaded_lte) {
-            (Some(uploaded_gte), Some(uploaded_lte)) => {
-                query_builder.push(" AND uploaded BETWEEN ? AND ?");
-                query_builder.push_bind(uploaded_gte);
-                query_builder.push_bind(uploaded_lte);
-            }
-            (Some(uploaded_gte), None) => {
-                query_builder.push(" AND uploaded >= ?");
-                query_builder.push_bind(uploaded_gte);
-            }
-            (None, Some(uploaded_lte)) => {
-                query_builder.push(" AND uploaded <= ?");
-                query_builder.push_bind(uploaded_lte);
-            }
-            _ => {}
-        }
-
-        match (book_filter.id_gte, book_filter.id_lte) {
-            (Some(id_gte), Some(id_lte)) => {
-                query_builder.push(" AND id BETWEEN ? AND ?");
-                query_builder.push_bind(id_gte);
-                query_builder.push_bind(id_lte);
-            }
-            (Some(id_gte), None) => {
-                query_builder.push(" AND id >= ?");
-                query_builder.push_bind(id_gte);
-            }
-            (None, Some(id_lte)) => {
-                query_builder.push(" AND id <= ?");
-                query_builder.push_bind(id_lte);
-            }
-            _ => {}
-        }
-
-        query_builder
-            .build_query_scalar()
-            .fetch_one(&db.0)
-            .await
-            .unwrap()
-    };
-
-    let books = {
-        let mut query_builder = sqlx::query_builder::QueryBuilder::new(
-            r#"
+    let books = sqlx::query_as!(
+        RemoteBook,
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year,
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
+            b.uploaded,
+            COALESCE(
+                (
                     SELECT
-                        b.id,
-                        b.title,
-                        b.lang,
-                        b.file_type,
-                        b.year,
-                        CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
-                        b.uploaded,
-                        COALESCE(
-                            (
-                                SELECT
-                                    ARRAY_AGG(
-                                        ROW(
-                                            authors.id,
-                                            authors.first_name,
-                                            authors.last_name,
-                                            authors.middle_name,
-                                            EXISTS(
-                                                SELECT * FROM author_annotations WHERE author = authors.id
-                                            )
-                                        )::author_type
-                                    )
-                                FROM book_authors
-                                JOIN authors ON authors.id = book_authors.author
-                                WHERE book_authors.book = b.id
-                            ),
-                            ARRAY[]::author_type[]
-                        ) AS "authors!: Vec<Author>",
-                        COALESCE(
-                            (
-                                SELECT
-                                    ARRAY_AGG(
-                                        ROW(
-                                            authors.id,
-                                            authors.first_name,
-                                            authors.last_name,
-                                            authors.middle_name,
-                                            EXISTS(
-                                                SELECT * FROM author_annotations WHERE author = authors.id
-                                            )
-                                        )::author_type
-                                    )
-                                FROM translations
-                                JOIN authors ON authors.id = translations.author
-                                WHERE translations.book = b.id
-                            ),
-                            ARRAY[]::author_type[]
-                        ) AS "translators!: Vec<Author>",
-                        COALESCE(
-                            (
-                                SELECT
-                                    ARRAY_AGG(
-                                        ROW(
-                                            sequences.id,
-                                            sequences.name
-                                        )::sequence_type
-                                    )
-                                FROM book_sequences
-                                JOIN sequences ON sequences.id = book_sequences.sequence
-                                WHERE book_sequences.book = b.id
-                            ),
-                            ARRAY[]::sequence_type[]
-                        ) AS "sequences!: Vec<Sequence>",
-                        EXISTS(
-                            SELECT * FROM book_annotations WHERE book = b.id
-                        ) AS "annotation_exists!: bool",
-                        (
-                            SELECT
-                                ROW(
-                                    sources.id,
-                                    sources.name
-                                )::source_type
-                            FROM sources
-                            WHERE sources.id = b.source
-                        ) AS "source!: Source",
-                        b.remote_id
-                    FROM books b
-                "#,
-        );
-
-        query_builder.push(" WHERE lang = ANY(?)");
-        query_builder.push_bind(&book_filter.allowed_langs);
-
-        if let Some(is_deleted) = book_filter.is_deleted {
-            query_builder.push(" AND is_deleted = ?");
-            query_builder.push_bind(is_deleted);
-        }
-
-        match (book_filter.uploaded_gte, book_filter.uploaded_lte) {
-            (Some(uploaded_gte), Some(uploaded_lte)) => {
-                query_builder.push(" AND uploaded BETWEEN ? AND ?");
-                query_builder.push_bind(uploaded_gte);
-                query_builder.push_bind(uploaded_lte);
-            }
-            (Some(uploaded_gte), None) => {
-                query_builder.push(" AND uploaded >= ?");
-                query_builder.push_bind(uploaded_gte);
-            }
-            (None, Some(uploaded_lte)) => {
-                query_builder.push(" AND uploaded <= ?");
-                query_builder.push_bind(uploaded_lte);
-            }
-            _ => {}
-        }
-
-        match (book_filter.id_gte, book_filter.id_lte) {
-            (Some(id_gte), Some(id_lte)) => {
-                query_builder.push(" AND id BETWEEN ? AND ?");
-                query_builder.push_bind(id_gte);
-                query_builder.push_bind(id_lte);
-            }
-            (Some(id_gte), None) => {
-                query_builder.push(" AND id >= ?");
-                query_builder.push_bind(id_gte);
-            }
-            (None, Some(id_lte)) => {
-                query_builder.push(" AND id <= ?");
-                query_builder.push_bind(id_lte);
-            }
-            _ => {}
-        }
-
-        query_builder.push(" ORDER BY b.id ASC");
-
-        query_builder.push(" OFFSET ?");
-        query_builder.push_bind((pagination.page - 1) * pagination.size);
-
-        query_builder.push(" LIMIT ?");
-        query_builder.push_bind(pagination.size);
-
-        query_builder
-            .build_query_as()
-            .fetch_all(&db.0)
-            .await
-            .unwrap()
-    };
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM book_authors
+                    JOIN authors ON authors.id = book_authors.author
+                    WHERE book_authors.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "authors!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                authors.middle_name,
+                                EXISTS(
+                                    SELECT * FROM author_annotations WHERE author = authors.id
+                                )
+                            )::author_type
+                        )
+                    FROM translations
+                    JOIN authors ON authors.id = translations.author
+                    WHERE translations.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS "translators!: Vec<Author>",
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                sequences.id,
+                                sequences.name
+                            )::sequence_type
+                        )
+                    FROM book_sequences
+                    JOIN sequences ON sequences.id = book_sequences.sequence
+                    WHERE book_sequences.book = b.id
+                ),
+                ARRAY[]::sequence_type[]
+            ) AS "sequences!: Vec<Sequence>",
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS "annotation_exists!: bool",
+            (
+                SELECT
+                    ROW(
+                        sources.id,
+                        sources.name
+                    )::source_type
+                FROM sources
+                WHERE sources.id = b.source
+            ) AS "source!: Source",
+            b.remote_id
+        FROM books b
+        WHERE lang = ANY($1) AND
+        ($2::boolean IS NULL OR is_deleted = $2) AND
+        ($3::date IS NULL OR uploaded >= $3) AND
+        ($4::date IS NULL OR uploaded <= $4) AND
+        ($5::integer IS NULL OR id >= $5) AND
+        ($6::integer IS NULL OR id <= $6)
+        ORDER BY b.id ASC
+        OFFSET $7
+        LIMIT $8
+        "#,
+        &book_filter.allowed_langs,
+        book_filter.is_deleted,
+        book_filter.uploaded_gte,
+        book_filter.uploaded_lte,
+        book_filter.id_gte,
+        book_filter.id_lte,
+        (pagination.page - 1) * pagination.size,
+        pagination.size,
+    )
+        .fetch_all(&db.0)
+        .await
+        .unwrap();
 
     let page: Page<RemoteBook> = Page::new(books, books_count, &pagination);
 
