@@ -42,4 +42,4 @@ jobs:
       - name: Invoke deployment hook
         uses: joelwmale/webhook-action@master
         with:
-          url: ${{ secrets.WEBHOOK_URL }}?LIBRARY_UPDATER_TAG=${{ github.sha }}
+          url: ${{ secrets.WEBHOOK_URL }}?BOOK_SERVER_TAG=${{ github.sha }}
