@@ -24,7 +24,7 @@ once_cell = "1.21.1"
 tokio = { version = "1.44.2", features = ["full"] }
 
 tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter"]}
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"]}
 sentry-tracing = "0.41.0"
 tower-http = { version = "0.6.2", features = ["trace"] }
 
