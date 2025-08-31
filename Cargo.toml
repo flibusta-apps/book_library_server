@@ -25,18 +25,18 @@ tokio = { version = "1.44.2", features = ["full"] }
 
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"]}
-sentry-tracing = "0.41.0"
+sentry-tracing = "0.42.0"
 tower-http = { version = "0.6.2", features = ["trace"] }
 
 axum = { version = "0.8.1", features = ["json"] }
 axum-extra = { version ="0.10.0", features = ["query"] }
-axum-prometheus = "0.8.0"
+axum-prometheus = "0.9.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140", features = ["raw_value"] }
 
-sentry = { version = "0.41.0", features = ["debug-images"] }
+sentry = { version = "0.42.0", features = ["debug-images"] }
 
-meilisearch-sdk = "0.28.0"
+meilisearch-sdk = "0.29.1"
 
 rand = "0.9.0"
 
