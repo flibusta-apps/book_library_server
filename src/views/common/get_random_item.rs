@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 
 use crate::meilisearch::GetId;
 
-pub async fn get_random_item<'a, T>(index: Index, filter: String) -> i32
+pub async fn get_random_item<T>(index: Index, filter: String) -> i32
 where
     T: DeserializeOwned + GetId + 'static + Send + Sync,
 {
@@ -15,7 +15,7 @@ where
         .await
         .unwrap();
 
-    let offset: usize = rand::thread_rng().gen_range(0..result.estimated_total_hits.unwrap());
+    let offset: usize = rand::rng().random_range(0..result.estimated_total_hits.unwrap());
 
     let result = index
         .search()
