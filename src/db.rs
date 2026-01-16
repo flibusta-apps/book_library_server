@@ -12,10 +12,18 @@ pub async fn get_postgres_pool() -> PgPool {
         CONFIG.postgres_db
     );
 
-    PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .max_connections(10)
         .acquire_timeout(std::time::Duration::from_secs(300))
         .connect(&database_url)
         .await
-        .unwrap()
+        .unwrap();
+
+    // Run migrations
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations");
+
+    pool
 }
