@@ -485,6 +485,21 @@ pub async fn search_books(
     >,
     pagination: Query<Pagination>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let query = query.trim();
+
+    if query.is_empty() {
+        let page: Page<Book> = Page::new(vec![], 0, &pagination);
+
+        return Ok(Json(page));
+    }
+
+    let truncated_query: String = if query.chars().count() > 256 {
+        query.chars().take(256).collect()
+    } else {
+        query.to_string()
+    };
+    let query = truncated_query.as_str();
+
     let client = get_meili_client()?;
 
     let book_index = client.index("books");
@@ -493,7 +508,7 @@ pub async fn search_books(
 
     let result = book_index
         .search()
-        .with_query(&query)
+        .with_query(query)
         .with_filter(&filter)
         .with_offset(
             ((pagination.page - 1) * pagination.size)
@@ -584,18 +599,13 @@ pub async fn search_books(
         .fetch_all(&db.0)
         .await?;
 
-    books.sort_by(|a, b| {
-        let a_pos = book_ids
-            .iter()
-            .position(|i| *i == a.id)
-            .unwrap_or(usize::MAX);
-        let b_pos = book_ids
-            .iter()
-            .position(|i| *i == b.id)
-            .unwrap_or(usize::MAX);
+    let rank_map: std::collections::HashMap<i32, usize> = book_ids
+        .iter()
+        .enumerate()
+        .map(|(idx, id)| (*id, idx))
+        .collect();
 
-        a_pos.cmp(&b_pos)
-    });
+    books.sort_by_key(|book| rank_map.get(&book.id).copied().unwrap_or(usize::MAX));
 
     let page: Page<Book> = Page::new(books, total.try_into().unwrap_or(0i64), &pagination);
 

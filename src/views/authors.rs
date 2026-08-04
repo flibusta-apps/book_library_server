@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use axum::{
     extract::{Path, Query},
@@ -15,7 +15,6 @@ use crate::{
         allowed_langs::AllowedLangs,
         author::{Author, AuthorBook},
         author_annotation::AuthorAnnotation,
-        book::BaseBook,
         pagination::{Page, PageWithParent, Pagination},
         sequence::Sequence,
     },
@@ -284,14 +283,11 @@ async fn get_author_books_available_types(
         AllowedLangs,
     >,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: refactor
-
-    let books = sqlx::query_as!(
-        BaseBook,
+    let file_types = sqlx::query_scalar!(
         r#"
-        SELECT
-            b.id,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>"
+        SELECT DISTINCT unnest(
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END
+        ) AS "file_type!: String"
         FROM books b
         JOIN book_authors ba ON b.id = ba.book
         WHERE b.is_deleted = false AND ba.author = $1 AND b.lang = ANY($2)
@@ -302,15 +298,7 @@ async fn get_author_books_available_types(
         .fetch_all(&db.0)
         .await?;
 
-    let mut file_types: HashSet<String> = HashSet::new();
-
-    for book in books {
-        for file_type in book.available_types {
-            file_types.insert(file_type);
-        }
-    }
-
-    Ok(Json::<Vec<String>>(file_types.into_iter().collect()))
+    Ok(Json::<Vec<String>>(file_types))
 }
 
 async fn search_authors(
@@ -321,6 +309,14 @@ async fn search_authors(
     >,
     pagination: Query<Pagination>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let query = query.trim();
+    let query = &query[..query.len().min(256)];
+
+    if query.is_empty() {
+        let page: Page<Author> = Page::new(vec![], 0, &pagination);
+        return Ok(Json(page));
+    }
+
     let client = get_meili_client()?;
 
     let authors_index = client.index("authors");
@@ -329,7 +325,7 @@ async fn search_authors(
 
     let result = authors_index
         .search()
-        .with_query(&query)
+        .with_query(query)
         .with_filter(&filter)
         .with_offset(
             ((pagination.page - 1) * pagination.size)
@@ -364,18 +360,13 @@ async fn search_authors(
     .fetch_all(&db.0)
     .await?;
 
-    authors.sort_by(|a, b| {
-        let a_pos = author_ids
-            .iter()
-            .position(|i| *i == a.id)
-            .unwrap_or(usize::MAX);
-        let b_pos = author_ids
-            .iter()
-            .position(|i| *i == b.id)
-            .unwrap_or(usize::MAX);
+    let rank_map: HashMap<i32, usize> = author_ids
+        .iter()
+        .enumerate()
+        .map(|(idx, id)| (*id, idx))
+        .collect();
 
-        a_pos.cmp(&b_pos)
-    });
+    authors.sort_by_key(|author| rank_map.get(&author.id).copied().unwrap_or(usize::MAX));
 
     let page: Page<Author> = Page::new(authors, total.try_into().unwrap_or(0i64), &pagination);
 

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use axum::{
     extract::{Path, Query},
@@ -14,7 +14,6 @@ use crate::{
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
-        book::BaseBook,
         pagination::{Page, PageWithParent, Pagination},
         sequence::Sequence,
         translator::TranslatorBook,
@@ -154,14 +153,11 @@ async fn get_translated_books_available_types(
         AllowedLangs,
     >,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: refactor
-
-    let books = sqlx::query_as!(
-        BaseBook,
+    let file_types = sqlx::query_scalar!(
         r#"
-        SELECT
-            b.id,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>"
+        SELECT DISTINCT unnest(
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END
+        ) AS "file_type!: String"
         FROM books b
         JOIN translations t ON b.id = t.book
         WHERE
@@ -175,15 +171,7 @@ async fn get_translated_books_available_types(
         .fetch_all(&db.0)
         .await?;
 
-    let mut file_types: HashSet<String> = HashSet::new();
-
-    for book in books {
-        for file_type in book.available_types {
-            file_types.insert(file_type);
-        }
-    }
-
-    Ok(Json::<Vec<String>>(file_types.into_iter().collect()))
+    Ok(Json::<Vec<String>>(file_types))
 }
 
 async fn search_translators(
@@ -194,6 +182,21 @@ async fn search_translators(
     >,
     pagination: Query<Pagination>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let query = query.trim();
+
+    if query.is_empty() {
+        let page: Page<Author> = Page::new(vec![], 0, &pagination);
+
+        return Ok(Json(page));
+    }
+
+    let truncated_query: String = if query.chars().count() > 256 {
+        query.chars().take(256).collect()
+    } else {
+        query.to_string()
+    };
+    let query = truncated_query.as_str();
+
     let client = get_meili_client()?;
 
     let authors_index = client.index("authors");
@@ -202,7 +205,7 @@ async fn search_translators(
 
     let result = authors_index
         .search()
-        .with_query(&query)
+        .with_query(query)
         .with_filter(&filter)
         .with_offset(
             ((pagination.page - 1) * pagination.size)
@@ -237,18 +240,14 @@ async fn search_translators(
     .fetch_all(&db.0)
     .await?;
 
-    translators.sort_by(|a, b| {
-        let a_pos = translator_ids
-            .iter()
-            .position(|i| *i == a.id)
-            .unwrap_or(usize::MAX);
-        let b_pos = translator_ids
-            .iter()
-            .position(|i| *i == b.id)
-            .unwrap_or(usize::MAX);
+    let rank_map: HashMap<i32, usize> = translator_ids
+        .iter()
+        .enumerate()
+        .map(|(idx, id)| (*id, idx))
+        .collect();
 
-        a_pos.cmp(&b_pos)
-    });
+    translators
+        .sort_by_key(|translator| rank_map.get(&translator.id).copied().unwrap_or(usize::MAX));
 
     let page: Page<Author> = Page::new(translators, total.try_into().unwrap_or(0i64), &pagination);
 

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use axum::{extract::Query, response::IntoResponse, routing::get, Json, Router};
 
 use crate::error::ApiError;
@@ -64,39 +62,13 @@ pub async fn get_genres(
 }
 
 pub async fn get_genre_metas(db: Database) -> Result<impl IntoResponse, ApiError> {
-    let genres = sqlx::query_as!(
-        Genre,
+    let metas = sqlx::query_scalar!(
         r#"
-        SELECT
-            genres.id,
-            genres.remote_id,
-            genres.code,
-            genres.description,
-            genres.meta,
-            (
-                SELECT
-                    ROW(
-                        sources.id,
-                        sources.name
-                    )::source_type
-                FROM sources
-                WHERE sources.id = genres.source
-            ) AS "source!: Source"
-        FROM genres
-        ORDER BY genres.id ASC
+        SELECT DISTINCT meta FROM genres ORDER BY meta
         "#
     )
     .fetch_all(&db.0)
     .await?;
-
-    let mut metas: HashSet<String> = HashSet::new();
-
-    for genre in genres {
-        metas.insert(genre.meta.clone());
-    }
-
-    let mut metas: Vec<String> = metas.into_iter().collect();
-    metas.sort();
 
     Ok(Json::<Vec<String>>(metas))
 }

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use axum::{
     extract::{Path, Query},
@@ -14,7 +14,6 @@ use crate::{
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
-        book::BaseBook,
         pagination::{Page, PageWithParent, Pagination},
         sequence::{Sequence, SequenceBook},
     },
@@ -60,6 +59,13 @@ async fn search_sequence(
     >,
     pagination: Query<Pagination>,
 ) -> Result<impl IntoResponse, ApiError> {
+    let query: String = query.trim().chars().take(256).collect();
+
+    if query.is_empty() {
+        let page: Page<Sequence> = Page::new(vec![], 0, &pagination);
+        return Ok(Json(page));
+    }
+
     let client = get_meili_client()?;
 
     let sequence_index = client.index("sequences");
@@ -92,18 +98,13 @@ async fn search_sequence(
     .fetch_all(&db.0)
     .await?;
 
-    sequences.sort_by(|a, b| {
-        let a_pos = sequence_ids
-            .iter()
-            .position(|i| *i == a.id)
-            .unwrap_or(usize::MAX);
-        let b_pos: usize = sequence_ids
-            .iter()
-            .position(|i| *i == b.id)
-            .unwrap_or(usize::MAX);
+    let rank: HashMap<i32, usize> = sequence_ids
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (*id, i))
+        .collect();
 
-        a_pos.cmp(&b_pos)
-    });
+    sequences.sort_by_key(|a| rank.get(&a.id).copied().unwrap_or(usize::MAX));
 
     let page: Page<Sequence> = Page::new(sequences, total.try_into().unwrap_or(0i64), &pagination);
 
@@ -137,14 +138,11 @@ async fn get_sequence_available_types(
         AllowedLangs,
     >,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: refactor
-
-    let books = sqlx::query_as!(
-        BaseBook,
+    let file_types = sqlx::query_scalar!(
         r#"
-        SELECT
-            b.id,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>"
+        SELECT DISTINCT unnest(
+            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END
+        ) AS "file_type!: String"
         FROM books b
         JOIN book_sequences bs ON b.id = bs.book
         WHERE
@@ -158,15 +156,7 @@ async fn get_sequence_available_types(
         .fetch_all(&db.0)
         .await?;
 
-    let mut file_types: HashSet<String> = HashSet::new();
-
-    for book in books {
-        for file_type in book.available_types {
-            file_types.insert(file_type);
-        }
-    }
-
-    Ok(Json::<Vec<String>>(file_types.into_iter().collect()))
+    Ok(Json::<Vec<String>>(file_types))
 }
 
 async fn get_sequence_books(
@@ -206,7 +196,7 @@ async fn get_sequence_books(
     .await?
     .unwrap_or(0);
 
-    let mut books = sqlx::query_as!(
+    let books = sqlx::query_as!(
         SequenceBook,
         r#"
         SELECT
@@ -277,8 +267,6 @@ async fn get_sequence_books(
     )
         .fetch_all(&db.0)
         .await?;
-
-    books.sort_by_key(|a| a.position);
 
     let page: PageWithParent<SequenceBook, Sequence> =
         PageWithParent::new(sequence, books, books_count, &pagination);
