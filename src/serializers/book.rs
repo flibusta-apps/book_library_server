@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::date::naive_date_serializer;
 
+use super::allowed_langs::deserialize_lang_codes;
 use super::{author::Author, genre::Genre, sequence::Sequence, source::Source};
 
 fn default_langs() -> Vec<String> {
@@ -11,7 +12,7 @@ fn default_langs() -> Vec<String> {
 
 #[derive(Deserialize)]
 pub struct BookFilter {
-    #[serde(default = "default_langs")]
+    #[serde(default = "default_langs", deserialize_with = "deserialize_lang_codes")]
     pub allowed_langs: Vec<String>,
     pub is_deleted: Option<bool>,
     pub uploaded_gte: Option<NaiveDate>,
@@ -67,6 +68,7 @@ pub struct DetailBook {
 
 #[derive(Deserialize)]
 pub struct RandomBookFilter {
+    #[serde(default = "default_langs", deserialize_with = "deserialize_lang_codes")]
     pub allowed_langs: Vec<String>,
     pub genre: Option<i32>,
 }

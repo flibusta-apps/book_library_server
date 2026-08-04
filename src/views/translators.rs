@@ -61,10 +61,10 @@ async fn get_translated_books(
         r#"
         SELECT COUNT(*)
         FROM books b
-        JOIN book_authors ba ON b.id = ba.book
+        JOIN translations t ON b.id = t.book
         WHERE
             b.is_deleted = false
-            AND ba.author = $1
+            AND t.author = $1
             AND b.lang = ANY($2)
         "#,
         translator_id,
@@ -124,11 +124,12 @@ async fn get_translated_books(
                 SELECT * FROM book_annotations WHERE book = b.id
             ) AS "annotation_exists!: bool"
         FROM books b
-        JOIN book_authors ba ON b.id = ba.book
+        JOIN translations t ON b.id = t.book
         WHERE
             b.is_deleted = false
-            AND ba.author = $1
+            AND t.author = $1
             AND b.lang = ANY($2)
+        ORDER BY t.position, b.title ASC
         OFFSET $3
         LIMIT $4
         "#,
@@ -162,10 +163,10 @@ async fn get_translated_books_available_types(
             b.id,
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>"
         FROM books b
-        JOIN book_authors ba ON b.id = ba.book
+        JOIN translations t ON b.id = t.book
         WHERE
             b.is_deleted = false
-            AND ba.author = $1
+            AND t.author = $1
             AND b.lang = ANY($2)
         "#,
         translator_id,

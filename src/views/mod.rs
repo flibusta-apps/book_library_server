@@ -7,6 +7,7 @@ use axum::{
 };
 use axum_prometheus::PrometheusMetricLayer;
 use sqlx::PgPool;
+use subtle::ConstantTimeEq;
 use tower_http::trace::{self, TraceLayer};
 use tracing::Level;
 
@@ -39,7 +40,12 @@ async fn auth(req: Request<axum::body::Body>, next: Next) -> Result<Response, St
         return Err(StatusCode::UNAUTHORIZED);
     };
 
-    if auth_header != CONFIG.api_key {
+    let is_valid: bool = auth_header
+        .as_bytes()
+        .ct_eq(CONFIG.api_key.as_bytes())
+        .into();
+
+    if !is_valid {
         return Err(StatusCode::UNAUTHORIZED);
     }
 
@@ -69,8 +75,9 @@ pub async fn get_router() -> Router {
         .route("/health", get(health_check))
         .layer(Extension(client));
 
-    let metric_router =
-        Router::new().route("/metrics", get(|| async move { metric_handle.render() }));
+    let metric_router = Router::new()
+        .route("/metrics", get(|| async move { metric_handle.render() }))
+        .layer(middleware::from_fn(auth));
 
     Router::new()
         .merge(app_router)

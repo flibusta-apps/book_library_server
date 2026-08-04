@@ -95,8 +95,9 @@ async fn get_random_author(
         "#,
         author_id
     )
-    .fetch_one(&db.0)
-    .await?;
+    .fetch_optional(&db.0)
+    .await?
+    .ok_or(ApiError::NotFound)?;
 
     Ok(Json::<Author>(author))
 }

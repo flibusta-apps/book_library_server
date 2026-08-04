@@ -45,8 +45,9 @@ async fn get_random_sequence(
         "#,
         sequence_id
     )
-    .fetch_one(&db.0)
-    .await?;
+    .fetch_optional(&db.0)
+    .await?
+    .ok_or(ApiError::NotFound)?;
 
     Ok(Json::<Sequence>(sequence))
 }
