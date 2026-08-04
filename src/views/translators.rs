@@ -9,6 +9,7 @@ use axum::{
 };
 
 use crate::{
+    error::ApiError,
     meilisearch::{get_meili_client, AuthorMeili},
     serializers::{
         allowed_langs::AllowedLangs,
@@ -29,7 +30,7 @@ async fn get_translated_books(
         AllowedLangs,
     >,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let translator = sqlx::query_as!(
         Author,
         r#"
@@ -49,12 +50,11 @@ async fn get_translated_books(
         translator_id
     )
     .fetch_optional(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     let translator = match translator {
         Some(translator) => translator,
-        None => return StatusCode::NOT_FOUND.into_response(),
+        None => return Ok(StatusCode::NOT_FOUND.into_response()),
     };
 
     let books_count = sqlx::query_scalar!(
@@ -71,9 +71,8 @@ async fn get_translated_books(
         &allowed_langs
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap()
-    .unwrap();
+    .await?
+    .unwrap_or(0);
 
     let books = sqlx::query_as!(
         TranslatorBook,
@@ -139,13 +138,12 @@ async fn get_translated_books(
         pagination.size
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     let page: PageWithParent<TranslatorBook, Author> =
         PageWithParent::new(translator, books, books_count, &pagination);
 
-    Json(page).into_response()
+    Ok(Json(page).into_response())
 }
 
 async fn get_translated_books_available_types(
@@ -154,7 +152,7 @@ async fn get_translated_books_available_types(
     axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
         AllowedLangs,
     >,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     // TODO: refactor
 
     let books = sqlx::query_as!(
@@ -174,8 +172,7 @@ async fn get_translated_books_available_types(
         &allowed_langs
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     let mut file_types: HashSet<String> = HashSet::new();
 
@@ -185,7 +182,7 @@ async fn get_translated_books_available_types(
         }
     }
 
-    Json::<Vec<String>>(file_types.into_iter().collect())
+    Ok(Json::<Vec<String>>(file_types.into_iter().collect()))
 }
 
 async fn search_translators(
@@ -195,8 +192,8 @@ async fn search_translators(
         AllowedLangs,
     >,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
-    let client = get_meili_client();
+) -> Result<impl IntoResponse, ApiError> {
+    let client = get_meili_client()?;
 
     let authors_index = client.index("authors");
 
@@ -209,14 +206,13 @@ async fn search_translators(
         .with_offset(
             ((pagination.page - 1) * pagination.size)
                 .try_into()
-                .unwrap(),
+                .unwrap_or(0),
         )
-        .with_limit(pagination.size.try_into().unwrap())
+        .with_limit(pagination.size.try_into().unwrap_or(50))
         .execute::<AuthorMeili>()
-        .await
-        .unwrap();
+        .await?;
 
-    let total = result.estimated_total_hits.unwrap();
+    let total = result.estimated_total_hits.unwrap_or(0);
     let translator_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
     let mut translators = sqlx::query_as!(
@@ -238,19 +234,24 @@ async fn search_translators(
         &translator_ids
     )
     .fetch_all(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     translators.sort_by(|a, b| {
-        let a_pos = translator_ids.iter().position(|i| *i == a.id).unwrap();
-        let b_pos = translator_ids.iter().position(|i| *i == b.id).unwrap();
+        let a_pos = translator_ids
+            .iter()
+            .position(|i| *i == a.id)
+            .unwrap_or(usize::MAX);
+        let b_pos = translator_ids
+            .iter()
+            .position(|i| *i == b.id)
+            .unwrap_or(usize::MAX);
 
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Author> = Page::new(translators, total.try_into().unwrap(), &pagination);
+    let page: Page<Author> = Page::new(translators, total.try_into().unwrap_or(0i64), &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
 pub async fn get_translators_router() -> Router {

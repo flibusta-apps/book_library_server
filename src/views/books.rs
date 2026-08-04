@@ -7,6 +7,7 @@ use axum::{
 };
 
 use crate::{
+    error::ApiError,
     meilisearch::{get_meili_client, BookMeili},
     serializers::{
         allowed_langs::AllowedLangs,
@@ -26,7 +27,7 @@ pub async fn get_books(
     db: Database,
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<BookFilter>,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let books_count = sqlx::query_scalar!(
         r#"
         SELECT COUNT(*) FROM books
@@ -45,9 +46,8 @@ pub async fn get_books(
         book_filter.id_lte,
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap()
-    .unwrap();
+    .await?
+    .unwrap_or(0);
 
     let books = sqlx::query_as!(
         RemoteBook,
@@ -149,19 +149,18 @@ pub async fn get_books(
         pagination.size,
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     let page: Page<RemoteBook> = Page::new(books, books_count, &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
 pub async fn get_base_books(
     db: Database,
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<BookFilter>,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let books_count = sqlx::query_scalar!(
         r#"
         SELECT COUNT(*) FROM books
@@ -180,9 +179,8 @@ pub async fn get_base_books(
         book_filter.id_lte,
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap()
-    .unwrap();
+    .await?
+    .unwrap_or(0);
 
     let books = sqlx::query_as!(
         BaseBook,
@@ -211,20 +209,19 @@ pub async fn get_base_books(
         pagination.size,
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     let page: Page<BaseBook> = Page::new(books, books_count, &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
 pub async fn get_random_book(
     db: Database,
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<RandomBookFilter>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let book_id = {
-        let client = get_meili_client();
+        let client = get_meili_client()?;
 
         let authors_index = client.index("books");
 
@@ -238,7 +235,7 @@ pub async fn get_random_book(
             format!("{langs_filter}{genre_filter}")
         };
 
-        get_random_item::<BookMeili>(authors_index, filter).await
+        get_random_item::<BookMeili>(authors_index, filter).await?
     };
 
     let book = sqlx::query_as!(
@@ -351,17 +348,16 @@ pub async fn get_random_book(
         book_id
     )
         .fetch_optional(&db.0)
-        .await
-        .unwrap()
-        .unwrap();
+        .await?
+        .ok_or(ApiError::NotFound)?;
 
-    Json::<DetailBook>(book).into_response()
+    Ok(Json::<DetailBook>(book).into_response())
 }
 
 pub async fn get_remote_book(
     db: Database,
     Path((source_id, remote_id)): Path<(i16, i32)>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let book = sqlx::query_as!(
         DetailBook,
         r#"
@@ -473,13 +469,12 @@ pub async fn get_remote_book(
         remote_id
     )
         .fetch_optional(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
-    match book {
+    Ok(match book {
         Some(book) => Json::<DetailBook>(book).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
-    }
+    })
 }
 
 pub async fn search_books(
@@ -489,8 +484,8 @@ pub async fn search_books(
         AllowedLangs,
     >,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
-    let client = get_meili_client();
+) -> Result<impl IntoResponse, ApiError> {
+    let client = get_meili_client()?;
 
     let book_index = client.index("books");
 
@@ -503,14 +498,13 @@ pub async fn search_books(
         .with_offset(
             ((pagination.page - 1) * pagination.size)
                 .try_into()
-                .unwrap(),
+                .unwrap_or(0),
         )
-        .with_limit(pagination.size.try_into().unwrap())
+        .with_limit(pagination.size.try_into().unwrap_or(50))
         .execute::<BookMeili>()
-        .await
-        .unwrap();
+        .await?;
 
-    let total = result.estimated_total_hits.unwrap();
+    let total = result.estimated_total_hits.unwrap_or(0);
     let book_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
     let mut books = sqlx::query_as!(
@@ -588,22 +582,30 @@ pub async fn search_books(
         &book_ids
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     books.sort_by(|a, b| {
-        let a_pos = book_ids.iter().position(|i| *i == a.id).unwrap();
-        let b_pos = book_ids.iter().position(|i| *i == b.id).unwrap();
+        let a_pos = book_ids
+            .iter()
+            .position(|i| *i == a.id)
+            .unwrap_or(usize::MAX);
+        let b_pos = book_ids
+            .iter()
+            .position(|i| *i == b.id)
+            .unwrap_or(usize::MAX);
 
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Book> = Page::new(books, total.try_into().unwrap(), &pagination);
+    let page: Page<Book> = Page::new(books, total.try_into().unwrap_or(0i64), &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
-pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoResponse {
+pub async fn get_book(
+    db: Database,
+    Path(book_id): Path<i32>,
+) -> Result<impl IntoResponse, ApiError> {
     let book = sqlx::query_as!(
         DetailBook,
         r#"
@@ -714,16 +716,18 @@ pub async fn get_book(db: Database, Path(book_id): Path<i32>) -> impl IntoRespon
         book_id
     )
         .fetch_optional(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
-    match book {
+    Ok(match book {
         Some(book) => Json::<DetailBook>(book).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
-    }
+    })
 }
 
-pub async fn get_book_annotation(db: Database, Path(book_id): Path<i32>) -> impl IntoResponse {
+pub async fn get_book_annotation(
+    db: Database,
+    Path(book_id): Path<i32>,
+) -> Result<impl IntoResponse, ApiError> {
     let book_annotation = sqlx::query_as!(
         BookAnnotation,
         r#"
@@ -738,13 +742,12 @@ pub async fn get_book_annotation(db: Database, Path(book_id): Path<i32>) -> impl
         book_id
     )
     .fetch_optional(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
-    match book_annotation {
+    Ok(match book_annotation {
         Some(book_annotation) => Json::<BookAnnotation>(book_annotation).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
-    }
+    })
 }
 
 pub async fn get_books_router() -> Router {

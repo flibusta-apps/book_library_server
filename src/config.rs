@@ -27,7 +27,9 @@ impl Config {
             postgres_user: get_env("POSTGRES_USER"),
             postgres_password: get_env("POSTGRES_PASSWORD"),
             postgres_host: get_env("POSTGRES_HOST"),
-            postgres_port: get_env("POSTGRES_PORT").parse().unwrap(),
+            postgres_port: get_env("POSTGRES_PORT")
+                .parse()
+                .expect("POSTGRES_PORT must be a valid u32"),
             postgres_db: get_env("POSTGRES_DB"),
 
             meili_host: get_env("MEILI_HOST"),

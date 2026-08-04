@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use axum::{extract::Query, response::IntoResponse, routing::get, Json, Router};
 
+use crate::error::ApiError;
 use crate::serializers::{
     genre::{Genre, GenreFilter},
     pagination::{Page, Pagination},
@@ -15,7 +16,7 @@ pub async fn get_genres(
     db: Database,
     pagination: Query<Pagination>,
     Query(GenreFilter { meta }): Query<GenreFilter>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let genres_count = sqlx::query_scalar!(
         r#"
         SELECT COUNT(*) FROM genres
@@ -24,9 +25,8 @@ pub async fn get_genres(
         meta
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap()
-    .unwrap();
+    .await?
+    .unwrap_or(0);
 
     let genres = sqlx::query_as!(
         Genre,
@@ -56,15 +56,14 @@ pub async fn get_genres(
         (pagination.page - 1) * pagination.size
     )
     .fetch_all(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     let page: Page<Genre> = Page::new(genres, genres_count, &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
-pub async fn get_genre_metas(db: Database) -> impl IntoResponse {
+pub async fn get_genre_metas(db: Database) -> Result<impl IntoResponse, ApiError> {
     let genres = sqlx::query_as!(
         Genre,
         r#"
@@ -88,8 +87,7 @@ pub async fn get_genre_metas(db: Database) -> impl IntoResponse {
         "#
     )
     .fetch_all(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     let mut metas: HashSet<String> = HashSet::new();
 
@@ -100,7 +98,7 @@ pub async fn get_genre_metas(db: Database) -> impl IntoResponse {
     let mut metas: Vec<String> = metas.into_iter().collect();
     metas.sort();
 
-    Json::<Vec<String>>(metas)
+    Ok(Json::<Vec<String>>(metas))
 }
 
 pub async fn get_genres_router() -> Router {

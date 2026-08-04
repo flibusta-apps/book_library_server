@@ -9,6 +9,7 @@ use axum::{
 };
 
 use crate::{
+    error::ApiError,
     meilisearch::{get_meili_client, AuthorMeili},
     serializers::{
         allowed_langs::AllowedLangs,
@@ -22,12 +23,14 @@ use crate::{
 
 use super::{common::get_random_item::get_random_item, Database};
 
-async fn get_authors(db: Database, pagination: Query<Pagination>) -> impl IntoResponse {
+async fn get_authors(
+    db: Database,
+    pagination: Query<Pagination>,
+) -> Result<impl IntoResponse, ApiError> {
     let authors_count = sqlx::query_scalar!("SELECT COUNT(*) FROM authors",)
         .fetch_one(&db.0)
-        .await
-        .unwrap()
-        .unwrap();
+        .await?
+        .unwrap_or(0);
 
     let authors = sqlx::query_as!(
         Author,
@@ -51,12 +54,11 @@ async fn get_authors(db: Database, pagination: Query<Pagination>) -> impl IntoRe
         pagination.size
     )
     .fetch_all(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     let page: Page<Author> = Page::new(authors, authors_count, &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
 async fn get_random_author(
@@ -64,15 +66,15 @@ async fn get_random_author(
     axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
         AllowedLangs,
     >,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let author_id = {
-        let client = get_meili_client();
+        let client = get_meili_client()?;
 
         let authors_index = client.index("authors");
 
         let filter = format!("author_langs IN [{}]", allowed_langs.join(", "));
 
-        get_random_item::<AuthorMeili>(authors_index, filter).await
+        get_random_item::<AuthorMeili>(authors_index, filter).await?
     };
 
     let author = sqlx::query_as!(
@@ -94,13 +96,15 @@ async fn get_random_author(
         author_id
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
-    Json::<Author>(author)
+    Ok(Json::<Author>(author))
 }
 
-async fn get_author(db: Database, Path(author_id): Path<i32>) -> impl IntoResponse {
+async fn get_author(
+    db: Database,
+    Path(author_id): Path<i32>,
+) -> Result<impl IntoResponse, ApiError> {
     let author = sqlx::query_as!(
         Author,
         r#"
@@ -120,16 +124,18 @@ async fn get_author(db: Database, Path(author_id): Path<i32>) -> impl IntoRespon
         author_id
     )
     .fetch_optional(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
-    match author {
+    Ok(match author {
         Some(author) => Json::<Author>(author).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
-    }
+    })
 }
 
-async fn get_author_annotation(db: Database, Path(author_id): Path<i32>) -> impl IntoResponse {
+async fn get_author_annotation(
+    db: Database,
+    Path(author_id): Path<i32>,
+) -> Result<impl IntoResponse, ApiError> {
     let author_annotation = sqlx::query_as!(
         AuthorAnnotation,
         r#"
@@ -144,13 +150,12 @@ async fn get_author_annotation(db: Database, Path(author_id): Path<i32>) -> impl
         author_id
     )
     .fetch_optional(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
-    match author_annotation {
+    Ok(match author_annotation {
         Some(annotation) => Json::<AuthorAnnotation>(annotation).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
-    }
+    })
 }
 
 async fn get_author_books(
@@ -160,7 +165,7 @@ async fn get_author_books(
         AllowedLangs,
     >,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let author = sqlx::query_as!(
         Author,
         r#"
@@ -180,12 +185,11 @@ async fn get_author_books(
         author_id
     )
     .fetch_optional(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     let author = match author {
         Some(author) => author,
-        None => return StatusCode::NOT_FOUND.into_response(),
+        None => return Ok(StatusCode::NOT_FOUND.into_response()),
     };
 
     let books_count = sqlx::query_scalar!(
@@ -199,9 +203,8 @@ async fn get_author_books(
         &allowed_langs
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap()
-    .unwrap();
+    .await?
+    .unwrap_or(0);
 
     let books = sqlx::query_as!(
         AuthorBook,
@@ -265,13 +268,12 @@ async fn get_author_books(
         pagination.size
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     let page: PageWithParent<AuthorBook, Author> =
         PageWithParent::new(author, books, books_count, &pagination);
 
-    Json(page).into_response()
+    Ok(Json(page).into_response())
 }
 
 async fn get_author_books_available_types(
@@ -280,7 +282,7 @@ async fn get_author_books_available_types(
     axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
         AllowedLangs,
     >,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     // TODO: refactor
 
     let books = sqlx::query_as!(
@@ -297,8 +299,7 @@ async fn get_author_books_available_types(
         &allowed_langs
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     let mut file_types: HashSet<String> = HashSet::new();
 
@@ -308,7 +309,7 @@ async fn get_author_books_available_types(
         }
     }
 
-    Json::<Vec<String>>(file_types.into_iter().collect())
+    Ok(Json::<Vec<String>>(file_types.into_iter().collect()))
 }
 
 async fn search_authors(
@@ -318,8 +319,8 @@ async fn search_authors(
         AllowedLangs,
     >,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
-    let client = get_meili_client();
+) -> Result<impl IntoResponse, ApiError> {
+    let client = get_meili_client()?;
 
     let authors_index = client.index("authors");
 
@@ -332,14 +333,13 @@ async fn search_authors(
         .with_offset(
             ((pagination.page - 1) * pagination.size)
                 .try_into()
-                .unwrap(),
+                .unwrap_or(0),
         )
-        .with_limit(pagination.size.try_into().unwrap())
+        .with_limit(pagination.size.try_into().unwrap_or(50))
         .execute::<AuthorMeili>()
-        .await
-        .unwrap();
+        .await?;
 
-    let total = result.estimated_total_hits.unwrap();
+    let total = result.estimated_total_hits.unwrap_or(0);
     let author_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
     let mut authors = sqlx::query_as!(
@@ -361,19 +361,24 @@ async fn search_authors(
         &author_ids
     )
     .fetch_all(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     authors.sort_by(|a, b| {
-        let a_pos = author_ids.iter().position(|i| *i == a.id).unwrap();
-        let b_pos = author_ids.iter().position(|i| *i == b.id).unwrap();
+        let a_pos = author_ids
+            .iter()
+            .position(|i| *i == a.id)
+            .unwrap_or(usize::MAX);
+        let b_pos = author_ids
+            .iter()
+            .position(|i| *i == b.id)
+            .unwrap_or(usize::MAX);
 
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Author> = Page::new(authors, total.try_into().unwrap(), &pagination);
+    let page: Page<Author> = Page::new(authors, total.try_into().unwrap_or(0i64), &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
 pub async fn get_authors_router() -> Router {

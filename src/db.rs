@@ -17,7 +17,7 @@ pub async fn get_postgres_pool() -> PgPool {
         .acquire_timeout(std::time::Duration::from_secs(300))
         .connect(&database_url)
         .await
-        .unwrap();
+        .expect("Failed to connect to PostgreSQL");
 
     // Run migrations
     sqlx::migrate!("./migrations")

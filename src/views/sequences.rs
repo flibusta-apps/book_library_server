@@ -9,6 +9,7 @@ use axum::{
 };
 
 use crate::{
+    error::ApiError,
     meilisearch::{get_meili_client, SequenceMeili},
     serializers::{
         allowed_langs::AllowedLangs,
@@ -26,15 +27,15 @@ async fn get_random_sequence(
     axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
         AllowedLangs,
     >,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let sequence_id = {
-        let client = get_meili_client();
+        let client = get_meili_client()?;
 
         let authors_index = client.index("sequences");
 
         let filter = format!("langs IN [{}]", allowed_langs.join(", "));
 
-        get_random_item::<SequenceMeili>(authors_index, filter).await
+        get_random_item::<SequenceMeili>(authors_index, filter).await?
     };
 
     let sequence = sqlx::query_as!(
@@ -45,10 +46,9 @@ async fn get_random_sequence(
         sequence_id
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
-    Json::<Sequence>(sequence)
+    Ok(Json::<Sequence>(sequence))
 }
 
 async fn search_sequence(
@@ -58,8 +58,8 @@ async fn search_sequence(
         AllowedLangs,
     >,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
-    let client = get_meili_client();
+) -> Result<impl IntoResponse, ApiError> {
+    let client = get_meili_client()?;
 
     let sequence_index = client.index("sequences");
 
@@ -72,14 +72,13 @@ async fn search_sequence(
         .with_offset(
             ((pagination.page - 1) * pagination.size)
                 .try_into()
-                .unwrap(),
+                .unwrap_or(0),
         )
-        .with_limit(pagination.size.try_into().unwrap())
+        .with_limit(pagination.size.try_into().unwrap_or(50))
         .execute::<SequenceMeili>()
-        .await
-        .unwrap();
+        .await?;
 
-    let total = result.estimated_total_hits.unwrap();
+    let total = result.estimated_total_hits.unwrap_or(0);
     let sequence_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
     let mut sequences = sqlx::query_as!(
@@ -90,22 +89,30 @@ async fn search_sequence(
         &sequence_ids
     )
     .fetch_all(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     sequences.sort_by(|a, b| {
-        let a_pos = sequence_ids.iter().position(|i| *i == a.id).unwrap();
-        let b_pos: usize = sequence_ids.iter().position(|i| *i == b.id).unwrap();
+        let a_pos = sequence_ids
+            .iter()
+            .position(|i| *i == a.id)
+            .unwrap_or(usize::MAX);
+        let b_pos: usize = sequence_ids
+            .iter()
+            .position(|i| *i == b.id)
+            .unwrap_or(usize::MAX);
 
         a_pos.cmp(&b_pos)
     });
 
-    let page: Page<Sequence> = Page::new(sequences, total.try_into().unwrap(), &pagination);
+    let page: Page<Sequence> = Page::new(sequences, total.try_into().unwrap_or(0i64), &pagination);
 
-    Json(page)
+    Ok(Json(page))
 }
 
-async fn get_sequence(db: Database, Path(sequence_id): Path<i32>) -> impl IntoResponse {
+async fn get_sequence(
+    db: Database,
+    Path(sequence_id): Path<i32>,
+) -> Result<impl IntoResponse, ApiError> {
     let sequence = sqlx::query_as!(
         Sequence,
         r#"
@@ -114,13 +121,12 @@ async fn get_sequence(db: Database, Path(sequence_id): Path<i32>) -> impl IntoRe
         sequence_id
     )
     .fetch_optional(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
-    match sequence {
+    Ok(match sequence {
         Some(sequence) => Json::<Sequence>(sequence).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
-    }
+    })
 }
 
 async fn get_sequence_available_types(
@@ -129,7 +135,7 @@ async fn get_sequence_available_types(
     axum_extra::extract::Query(AllowedLangs { allowed_langs }): axum_extra::extract::Query<
         AllowedLangs,
     >,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     // TODO: refactor
 
     let books = sqlx::query_as!(
@@ -149,8 +155,7 @@ async fn get_sequence_available_types(
         &allowed_langs
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
     let mut file_types: HashSet<String> = HashSet::new();
 
@@ -160,7 +165,7 @@ async fn get_sequence_available_types(
         }
     }
 
-    Json::<Vec<String>>(file_types.into_iter().collect())
+    Ok(Json::<Vec<String>>(file_types.into_iter().collect()))
 }
 
 async fn get_sequence_books(
@@ -170,7 +175,7 @@ async fn get_sequence_books(
         AllowedLangs,
     >,
     pagination: Query<Pagination>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let sequence = sqlx::query_as!(
         Sequence,
         r#"
@@ -179,12 +184,11 @@ async fn get_sequence_books(
         sequence_id
     )
     .fetch_optional(&db.0)
-    .await
-    .unwrap();
+    .await?;
 
     let sequence = match sequence {
         Some(v) => v,
-        None => return StatusCode::NOT_FOUND.into_response(),
+        None => return Ok(StatusCode::NOT_FOUND.into_response()),
     };
 
     let books_count = sqlx::query_scalar!(
@@ -198,9 +202,8 @@ async fn get_sequence_books(
         &allowed_langs
     )
     .fetch_one(&db.0)
-    .await
-    .unwrap()
-    .unwrap();
+    .await?
+    .unwrap_or(0);
 
     let mut books = sqlx::query_as!(
         SequenceBook,
@@ -272,15 +275,14 @@ async fn get_sequence_books(
         (pagination.page - 1) * pagination.size,
     )
         .fetch_all(&db.0)
-        .await
-        .unwrap();
+        .await?;
 
-    books.sort_by(|a, b| a.position.cmp(&b.position));
+    books.sort_by_key(|a| a.position);
 
     let page: PageWithParent<SequenceBook, Sequence> =
         PageWithParent::new(sequence, books, books_count, &pagination);
 
-    Json(page).into_response()
+    Ok(Json(page).into_response())
 }
 
 pub async fn get_sequences_router() -> Router {

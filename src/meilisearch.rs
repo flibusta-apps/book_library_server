@@ -1,10 +1,13 @@
 use meilisearch_sdk::client::Client;
 use serde::Deserialize;
 
-use crate::config::CONFIG;
+use crate::{config::CONFIG, error::ApiError};
 
-pub fn get_meili_client() -> Client {
-    Client::new(&CONFIG.meili_host, Some(CONFIG.meili_master_key.clone())).unwrap()
+pub fn get_meili_client() -> Result<Client, ApiError> {
+    Ok(Client::new(
+        &CONFIG.meili_host,
+        Some(CONFIG.meili_master_key.clone()),
+    )?)
 }
 
 pub trait GetId {

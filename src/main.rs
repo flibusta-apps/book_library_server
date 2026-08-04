@@ -1,5 +1,6 @@
 pub mod config;
 pub mod db;
+pub mod error;
 pub mod meilisearch;
 pub mod serializers;
 pub mod views;
@@ -15,7 +16,9 @@ use crate::views::get_router;
 #[tokio::main]
 async fn main() {
     let options = ClientOptions {
-        dsn: Some(Dsn::from_str(&config::CONFIG.sentry_dsn).unwrap()),
+        dsn: Some(
+            Dsn::from_str(&config::CONFIG.sentry_dsn).expect("SENTRY_DSN is not a valid DSN"),
+        ),
         default_integrations: false,
         ..Default::default()
     }
@@ -39,7 +42,38 @@ async fn main() {
     let app = get_router().await;
 
     info!("Start webserver...");
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .expect("Failed to bind webserver address");
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .expect("Webserver crashed");
     info!("Webserver shutdown...")
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    info!("Shutdown signal received, waiting for in-flight requests to finish...");
 }
