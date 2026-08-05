@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO books (source, remote_id, title, lang, file_type, uploaded, is_deleted, year)\n        VALUES (1, 1, 'Test Book', 'ru', 'fb2', CURRENT_DATE, false, 2020)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9fbc8a890e5e804a4d3b5cac0fe59862c4e2d74b5b70d69e042e2f84f378c0b3"
+}

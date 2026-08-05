@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO translations (position, author, book) VALUES (1, $1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0c5a8b2359b4915f16ebfd55cb3b8f5148fa70077b2697633ccc6bdf7271ecdd"
+}

@@ -30,11 +30,11 @@ async fn get_random_sequence(
     let sequence_id = {
         let client = &MEILI_CLIENT;
 
-        let authors_index = client.index("sequences");
+        let sequences_index = client.index("sequences");
 
         let filter = format!("langs IN [{}]", allowed_langs.join(", "));
 
-        get_random_item::<SequenceMeili>(authors_index, filter).await?
+        get_random_item::<SequenceMeili>(sequences_index, filter).await?
     };
 
     let sequence = sqlx::query_as!(
@@ -148,6 +148,7 @@ async fn get_sequence_available_types(
 ) -> Result<impl IntoResponse, ApiError> {
     let file_types = sqlx::query_scalar!(
         r#"
+        -- fb2 expansion is source-independent today because "flibusta" is the only source in this DB; add a source check here if a second source is ever introduced (see docs/specs/11-duplication-dead-code.md#11.2).
         SELECT DISTINCT unnest(
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END
         ) AS "file_type!: String"
@@ -223,7 +224,7 @@ async fn get_sequence_books(
                                 authors.id,
                                 authors.first_name,
                                 authors.last_name,
-                                authors.middle_name,
+                                COALESCE(authors.middle_name, ''),
                                 EXISTS(
                                     SELECT * FROM author_annotations WHERE author = authors.id
                                 )
@@ -243,7 +244,7 @@ async fn get_sequence_books(
                                 authors.id,
                                 authors.first_name,
                                 authors.last_name,
-                                authors.middle_name,
+                                COALESCE(authors.middle_name, ''),
                                 EXISTS(
                                     SELECT * FROM author_annotations WHERE author = authors.id
                                 )
@@ -282,7 +283,7 @@ async fn get_sequence_books(
     Ok(Json(page).into_response())
 }
 
-pub async fn get_sequences_router() -> Router {
+pub fn get_sequences_router() -> Router {
     Router::new()
         .route("/random", get(get_random_sequence))
         .route("/search/{query}", get(search_sequence))

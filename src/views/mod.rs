@@ -45,6 +45,7 @@ use self::{
 };
 
 pub mod authors;
+pub(crate) mod book_sql;
 pub mod books;
 pub mod common;
 pub mod genres;
@@ -106,11 +107,11 @@ pub async fn get_router() -> Router {
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
     let app_router = Router::new()
-        .nest("/api/v1/authors", get_authors_router().await)
-        .nest("/api/v1/translators", get_translators_router().await)
-        .nest("/api/v1/genres", get_genres_router().await)
-        .nest("/api/v1/books", get_books_router().await)
-        .nest("/api/v1/sequences", get_sequences_router().await)
+        .nest("/api/v1/authors", get_authors_router())
+        .nest("/api/v1/translators", get_translators_router())
+        .nest("/api/v1/genres", get_genres_router())
+        .nest("/api/v1/books", get_books_router())
+        .nest("/api/v1/sequences", get_sequences_router())
         .layer(middleware::from_fn(auth))
         .layer(Extension(client.clone()))
         .layer(prometheus_layer);

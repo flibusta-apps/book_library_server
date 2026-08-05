@@ -73,7 +73,7 @@ pub async fn get_genre_metas(db: Database) -> Result<impl IntoResponse, ApiError
     Ok(Json::<Vec<String>>(metas))
 }
 
-pub async fn get_genres_router() -> Router {
+pub fn get_genres_router() -> Router {
     Router::new()
         .route("/", get(get_genres))
         .route("/metas", get(get_genre_metas))

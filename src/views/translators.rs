@@ -92,7 +92,7 @@ async fn get_translated_books(
                                 authors.id,
                                 authors.first_name,
                                 authors.last_name,
-                                authors.middle_name,
+                                COALESCE(authors.middle_name, ''),
                                 EXISTS(
                                     SELECT * FROM author_annotations WHERE author = authors.id
                                 )
@@ -155,6 +155,7 @@ async fn get_translated_books_available_types(
 ) -> Result<impl IntoResponse, ApiError> {
     let file_types = sqlx::query_scalar!(
         r#"
+        -- fb2 expansion is source-independent today because "flibusta" is the only source in this DB; add a source check here if a second source is ever introduced (see docs/specs/11-duplication-dead-code.md#11.2).
         SELECT DISTINCT unnest(
             CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END
         ) AS "file_type!: String"
@@ -262,7 +263,7 @@ async fn search_translators(
     Ok(Json(page))
 }
 
-pub async fn get_translators_router() -> Router {
+pub fn get_translators_router() -> Router {
     Router::new()
         .route("/{translator_id}/books", get(get_translated_books))
         .route(

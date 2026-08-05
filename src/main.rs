@@ -1,17 +1,9 @@
-pub mod config;
-pub mod db;
-pub mod error;
-pub mod meilisearch;
-pub mod serializers;
-pub mod views;
-
+use book_library_server::{config, views::get_router};
 use sentry::{integrations::debug_images::DebugImagesIntegration, types::Dsn, ClientOptions};
 use sentry_tracing::EventFilter;
 use std::{net::SocketAddr, str::FromStr};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-
-use crate::views::get_router;
 
 #[tokio::main]
 async fn main() {

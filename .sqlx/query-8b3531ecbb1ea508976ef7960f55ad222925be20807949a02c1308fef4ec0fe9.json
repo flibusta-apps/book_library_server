@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO genres (source, remote_id, code, description, meta)\n        VALUES (1, 1, 'test_code', 'Test genre', 'test_meta')\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8b3531ecbb1ea508976ef7960f55ad222925be20807949a02c1308fef4ec0fe9"
+}

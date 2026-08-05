@@ -3,12 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use super::date::naive_date_serializer;
 
-use super::allowed_langs::deserialize_lang_codes;
+use super::allowed_langs::{default_langs, deserialize_lang_codes};
 use super::{author::Author, genre::Genre, sequence::Sequence, source::Source};
-
-fn default_langs() -> Vec<String> {
-    vec!["ru".to_string(), "be".to_string(), "uk".to_string()]
-}
 
 #[derive(Deserialize)]
 pub struct BookFilter {

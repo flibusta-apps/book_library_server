@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO sources (id, name) VALUES (1, 'test-source')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9d3c7451edec21e4f86e65a22c4065cf6da7125bd5b8269ac011a6303ac5130b"
+}

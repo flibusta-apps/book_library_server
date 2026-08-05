@@ -118,3 +118,120 @@ impl<T, P> PageWithParent<T, P> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn deserialize(value: serde_json::Value) -> Result<Pagination, serde_json::Error> {
+        serde_json::from_value(value)
+    }
+
+    #[test]
+    fn defaults_when_empty() {
+        let pagination = deserialize(serde_json::json!({})).expect("should deserialize");
+        assert_eq!(pagination.page, 1);
+        assert_eq!(pagination.size, 50);
+    }
+
+    #[test]
+    fn rejects_page_less_than_one() {
+        let result = deserialize(serde_json::json!({ "page": 0, "size": 10 }));
+        assert!(result.is_err());
+
+        let result = deserialize(serde_json::json!({ "page": -1, "size": 10 }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_size_less_than_one() {
+        let result = deserialize(serde_json::json!({ "page": 1, "size": 0 }));
+        assert!(result.is_err());
+
+        let result = deserialize(serde_json::json!({ "page": 1, "size": -5 }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_size_over_max() {
+        let result = deserialize(serde_json::json!({ "page": 1, "size": MAX_PAGE_SIZE + 1 }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn accepts_boundary_values() {
+        let pagination =
+            deserialize(serde_json::json!({ "page": 1, "size": 1 })).expect("size=1 valid");
+        assert_eq!(pagination.page, 1);
+        assert_eq!(pagination.size, 1);
+
+        let pagination = deserialize(serde_json::json!({ "page": 1, "size": MAX_PAGE_SIZE }))
+            .expect("size=MAX_PAGE_SIZE valid");
+        assert_eq!(pagination.size, MAX_PAGE_SIZE);
+    }
+
+    #[test]
+    fn offset_is_computed_correctly() {
+        let pagination = Pagination { page: 1, size: 20 };
+        assert_eq!(pagination.offset(), 0);
+
+        let pagination = Pagination { page: 3, size: 20 };
+        assert_eq!(pagination.offset(), 40);
+
+        let pagination = Pagination { page: 5, size: 200 };
+        assert_eq!(pagination.offset(), 800);
+    }
+
+    #[test]
+    fn calc_pages_zero_total() {
+        assert_eq!(calc_pages(0, 10), 0);
+    }
+
+    #[test]
+    fn calc_pages_exact_division() {
+        assert_eq!(calc_pages(100, 10), 10);
+        assert_eq!(calc_pages(20, 20), 1);
+    }
+
+    #[test]
+    fn calc_pages_with_remainder() {
+        assert_eq!(calc_pages(101, 10), 11);
+        assert_eq!(calc_pages(1, 10), 1);
+        assert_eq!(calc_pages(21, 20), 2);
+    }
+
+    #[test]
+    fn calc_pages_never_divides_by_zero_because_size_is_validated() {
+        // `size` is always >= 1 by the time `calc_pages` is called (enforced
+        // by `Pagination`'s `Deserialize` impl), but exercise the smallest
+        // valid size directly to make that invariant explicit.
+        assert_eq!(calc_pages(5, 1), 5);
+        assert_eq!(calc_pages(0, 1), 0);
+    }
+
+    #[test]
+    fn page_new_populates_all_fields() {
+        let pagination = Pagination { page: 2, size: 10 };
+        let page: Page<i32> = Page::new(vec![1, 2, 3], 23, &pagination);
+
+        assert_eq!(page.items, vec![1, 2, 3]);
+        assert_eq!(page.total, 23);
+        assert_eq!(page.page, 2);
+        assert_eq!(page.size, 10);
+        assert_eq!(page.pages, 3);
+    }
+
+    #[test]
+    fn page_with_parent_new_populates_all_fields() {
+        let pagination = Pagination { page: 1, size: 5 };
+        let page: PageWithParent<i32, &str> =
+            PageWithParent::new("parent", vec![1, 2], 5, &pagination);
+
+        assert_eq!(page.parent_item, "parent");
+        assert_eq!(page.items, vec![1, 2]);
+        assert_eq!(page.total, 5);
+        assert_eq!(page.page, 1);
+        assert_eq!(page.size, 5);
+        assert_eq!(page.pages, 1);
+    }
+}

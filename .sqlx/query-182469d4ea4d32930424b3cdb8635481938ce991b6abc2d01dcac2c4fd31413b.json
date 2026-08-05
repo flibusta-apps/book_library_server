@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO authors (source, remote_id, first_name, last_name, middle_name)\n        VALUES (1, 1, 'Ivan', 'Ivanov', NULL)\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "182469d4ea4d32930424b3cdb8635481938ce991b6abc2d01dcac2c4fd31413b"
+}
