@@ -23,7 +23,7 @@ macro_rules! query_detail_book {
                 b.file_type,
                 b.year,
                 -- fb2 expansion is source-independent today because "flibusta" is the only source in this DB; add a source check here if a second source is ever introduced (see docs/specs/11-duplication-dead-code.md#11.2).
-                CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
+                available_types(b.file_type) AS "available_types!: Vec<String>",
                 b.uploaded,
                 COALESCE(
                     (
@@ -34,13 +34,12 @@ macro_rules! query_detail_book {
                                     authors.first_name,
                                     authors.last_name,
                                     COALESCE(authors.middle_name, ''),
-                                    EXISTS(
-                                        SELECT * FROM author_annotations WHERE author = authors.id
-                                    )
+                                    aa.author IS NOT NULL
                                 )::author_type
                             )
                         FROM book_authors
                         JOIN authors ON authors.id = book_authors.author
+                        LEFT JOIN author_annotations aa ON aa.author = authors.id
                         WHERE book_authors.book = b.id
                     ),
                     ARRAY[]::author_type[]
@@ -54,13 +53,12 @@ macro_rules! query_detail_book {
                                     authors.first_name,
                                     authors.last_name,
                                     COALESCE(authors.middle_name, ''),
-                                    EXISTS(
-                                        SELECT * FROM author_annotations WHERE author = authors.id
-                                    )
+                                    aa.author IS NOT NULL
                                 )::author_type
                             )
                         FROM translations
                         JOIN authors ON authors.id = translations.author
+                        LEFT JOIN author_annotations aa ON aa.author = authors.id
                         WHERE translations.book = b.id
                     ),
                     ARRAY[]::author_type[]

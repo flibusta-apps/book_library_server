@@ -59,6 +59,7 @@ pub struct DetailBook {
     pub remote_id: i32,
     pub genres: Vec<Genre>,
     pub is_deleted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pages: Option<i32>,
 }
 

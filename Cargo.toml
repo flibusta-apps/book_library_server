@@ -34,7 +34,7 @@ tokio = { version = "1.44.2", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"]}
 sentry-tracing = "0.42.0"
-tower-http = { version = "0.6.2", features = ["trace", "timeout", "limit", "request-id", "util"] }
+tower-http = { version = "0.6.2", features = ["trace", "timeout", "limit", "request-id", "util", "compression-gzip"] }
 uuid = { version = "1", features = ["v4"] }
 
 axum = { version = "0.8.1", features = ["json"] }

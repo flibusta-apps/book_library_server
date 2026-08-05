@@ -10,7 +10,7 @@ use axum::{
 
 use crate::{
     error::ApiError,
-    meilisearch::{SequenceMeili, MEILI_CLIENT},
+    meilisearch::{SequenceMeili, MEILI_CLIENT, MEILI_TIMEOUT},
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
@@ -72,26 +72,30 @@ async fn search_sequence(
 
     let filter = format!("langs IN [{}]", allowed_langs.join(", "));
 
-    let result = sequence_index
-        .search()
-        .with_query(&query)
-        .with_filter(&filter)
-        // `Pagination` validation guarantees `page >= 1` and `size` within
-        // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
-        .with_offset(
-            pagination
-                .offset()
-                .try_into()
-                .expect("pagination values are validated to be non-negative"),
-        )
-        .with_limit(
-            pagination
-                .size
-                .try_into()
-                .expect("pagination size is validated to be non-negative"),
-        )
-        .execute::<SequenceMeili>()
-        .await?;
+    let result = tokio::time::timeout(
+        MEILI_TIMEOUT,
+        sequence_index
+            .search()
+            .with_query(&query)
+            .with_filter(&filter)
+            // `Pagination` validation guarantees `page >= 1` and `size` within
+            // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
+            .with_offset(
+                pagination
+                    .offset()
+                    .try_into()
+                    .expect("pagination values are validated to be non-negative"),
+            )
+            .with_limit(
+                pagination
+                    .size
+                    .try_into()
+                    .expect("pagination size is validated to be non-negative"),
+            )
+            .execute::<SequenceMeili>(),
+    )
+    .await
+    .map_err(|_| ApiError::MeiliTimeout)??;
 
     let total = result.estimated_total_hits.unwrap_or(0);
     let sequence_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
@@ -150,7 +154,7 @@ async fn get_sequence_available_types(
         r#"
         -- fb2 expansion is source-independent today because "flibusta" is the only source in this DB; add a source check here if a second source is ever introduced (see docs/specs/11-duplication-dead-code.md#11.2).
         SELECT DISTINCT unnest(
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END
+            available_types(b.file_type)
         ) AS "file_type!: String"
         FROM books b
         JOIN book_sequences bs ON b.id = bs.book
@@ -214,7 +218,7 @@ async fn get_sequence_books(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
+            available_types(b.file_type) AS "available_types!: Vec<String>",
             b.uploaded,
             COALESCE(
                 (
@@ -225,13 +229,12 @@ async fn get_sequence_books(
                                 authors.first_name,
                                 authors.last_name,
                                 COALESCE(authors.middle_name, ''),
-                                EXISTS(
-                                    SELECT * FROM author_annotations WHERE author = authors.id
-                                )
+                                aa.author IS NOT NULL
                             )::author_type
                         )
                     FROM book_authors
                     JOIN authors ON authors.id = book_authors.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
                     WHERE book_authors.book = b.id
                 ),
                 ARRAY[]::author_type[]
@@ -245,13 +248,12 @@ async fn get_sequence_books(
                                 authors.first_name,
                                 authors.last_name,
                                 COALESCE(authors.middle_name, ''),
-                                EXISTS(
-                                    SELECT * FROM author_annotations WHERE author = authors.id
-                                )
+                                aa.author IS NOT NULL
                             )::author_type
                         )
                     FROM translations
                     JOIN authors ON authors.id = translations.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
                     WHERE translations.book = b.id
                 ),
                 ARRAY[]::author_type[]
@@ -274,8 +276,8 @@ async fn get_sequence_books(
         pagination.size,
         (pagination.page - 1) * pagination.size,
     )
-        .fetch_all(&db.0)
-        .await?;
+    .fetch_all(&db.0)
+    .await?;
 
     let page: PageWithParent<SequenceBook, Sequence> =
         PageWithParent::new(sequence, books, books_count, &pagination);

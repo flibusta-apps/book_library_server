@@ -8,7 +8,7 @@ use axum::{
 
 use crate::{
     error::ApiError,
-    meilisearch::{BookMeili, MEILI_CLIENT},
+    meilisearch::{BookMeili, MEILI_CLIENT, MEILI_TIMEOUT},
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
@@ -43,7 +43,7 @@ pub async fn get_books(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
+            available_types(b.file_type) AS "available_types!: Vec<String>",
             b.uploaded,
             COALESCE(
                 (
@@ -54,13 +54,12 @@ pub async fn get_books(
                                 authors.first_name,
                                 authors.last_name,
                                 COALESCE(authors.middle_name, ''),
-                                EXISTS(
-                                    SELECT * FROM author_annotations WHERE author = authors.id
-                                )
+                                aa.author IS NOT NULL
                             )::author_type
                         )
                     FROM book_authors
                     JOIN authors ON authors.id = book_authors.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
                     WHERE book_authors.book = b.id
                 ),
                 ARRAY[]::author_type[]
@@ -74,13 +73,12 @@ pub async fn get_books(
                                 authors.first_name,
                                 authors.last_name,
                                 COALESCE(authors.middle_name, ''),
-                                EXISTS(
-                                    SELECT * FROM author_annotations WHERE author = authors.id
-                                )
+                                aa.author IS NOT NULL
                             )::author_type
                         )
                     FROM translations
                     JOIN authors ON authors.id = translations.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
                     WHERE translations.book = b.id
                 ),
                 ARRAY[]::author_type[]
@@ -133,8 +131,8 @@ pub async fn get_books(
         pagination.offset(),
         pagination.size,
     )
-        .fetch_all(&db.0)
-        .await?;
+    .fetch_all(&db.0)
+    .await?;
 
     let page: Page<RemoteBook> = Page::new(books, books_count, &pagination);
 
@@ -153,7 +151,7 @@ pub async fn get_base_books(
         r#"
         SELECT
             b.id,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>"
+            available_types(b.file_type) AS "available_types!: Vec<String>"
         FROM books b
         WHERE lang = ANY($1) AND
         ($2::boolean IS NULL OR is_deleted = $2) AND
@@ -174,8 +172,8 @@ pub async fn get_base_books(
         pagination.offset(),
         pagination.size,
     )
-        .fetch_all(&db.0)
-        .await?;
+    .fetch_all(&db.0)
+    .await?;
 
     let page: Page<BaseBook> = Page::new(books, books_count, &pagination);
 
@@ -253,26 +251,30 @@ pub async fn search_books(
 
     let filter = format!("lang IN [{}]", allowed_langs.join(", "));
 
-    let result = book_index
-        .search()
-        .with_query(query)
-        .with_filter(&filter)
-        // `Pagination` validation guarantees `page >= 1` and `size` within
-        // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
-        .with_offset(
-            pagination
-                .offset()
-                .try_into()
-                .expect("pagination values are validated to be non-negative"),
-        )
-        .with_limit(
-            pagination
-                .size
-                .try_into()
-                .expect("pagination size is validated to be non-negative"),
-        )
-        .execute::<BookMeili>()
-        .await?;
+    let result = tokio::time::timeout(
+        MEILI_TIMEOUT,
+        book_index
+            .search()
+            .with_query(query)
+            .with_filter(&filter)
+            // `Pagination` validation guarantees `page >= 1` and `size` within
+            // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
+            .with_offset(
+                pagination
+                    .offset()
+                    .try_into()
+                    .expect("pagination values are validated to be non-negative"),
+            )
+            .with_limit(
+                pagination
+                    .size
+                    .try_into()
+                    .expect("pagination size is validated to be non-negative"),
+            )
+            .execute::<BookMeili>(),
+    )
+    .await
+    .map_err(|_| ApiError::MeiliTimeout)??;
 
     let total = result.estimated_total_hits.unwrap_or(0);
     let book_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
@@ -286,7 +288,7 @@ pub async fn search_books(
             b.lang,
             b.file_type,
             b.year,
-            CASE WHEN b.file_type = 'fb2' THEN ARRAY['fb2', 'epub', 'mobi', 'fb2zip']::text[] ELSE ARRAY[b.file_type]::text[] END AS "available_types!: Vec<String>",
+            available_types(b.file_type) AS "available_types!: Vec<String>",
             b.uploaded,
             COALESCE(
                 (
@@ -297,13 +299,12 @@ pub async fn search_books(
                                 authors.first_name,
                                 authors.last_name,
                                 COALESCE(authors.middle_name, ''),
-                                EXISTS(
-                                    SELECT * FROM author_annotations WHERE author = authors.id
-                                )
+                                aa.author IS NOT NULL
                             )::author_type
                         )
                     FROM book_authors
                     JOIN authors ON authors.id = book_authors.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
                     WHERE book_authors.book = b.id
                 ),
                 ARRAY[]::author_type[]
@@ -317,13 +318,12 @@ pub async fn search_books(
                                 authors.first_name,
                                 authors.last_name,
                                 COALESCE(authors.middle_name, ''),
-                                EXISTS(
-                                    SELECT * FROM author_annotations WHERE author = authors.id
-                                )
+                                aa.author IS NOT NULL
                             )::author_type
                         )
                     FROM translations
                     JOIN authors ON authors.id = translations.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
                     WHERE translations.book = b.id
                 ),
                 ARRAY[]::author_type[]
@@ -351,8 +351,8 @@ pub async fn search_books(
         "#,
         &book_ids
     )
-        .fetch_all(&db.0)
-        .await?;
+    .fetch_all(&db.0)
+    .await?;
 
     let rank_map: std::collections::HashMap<i32, usize> = book_ids
         .iter()

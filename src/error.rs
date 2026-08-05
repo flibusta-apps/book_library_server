@@ -15,6 +15,10 @@ use serde_json::json;
 pub enum ApiError {
     Db(sqlx::Error),
     Meili(meilisearch_sdk::errors::Error),
+    /// A Meilisearch request was aborted after exceeding `meilisearch::MEILI_TIMEOUT`
+    /// (Spec 12.4) — e.g. a hung/blackholed Meilisearch instance — instead of
+    /// hanging the handler indefinitely.
+    MeiliTimeout,
     NotFound,
 }
 
@@ -47,6 +51,14 @@ impl IntoResponse for ApiError {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(json!({ "error": "internal server error" })),
+                )
+                    .into_response()
+            }
+            ApiError::MeiliTimeout => {
+                tracing::error!("meilisearch request timed out");
+                (
+                    StatusCode::GATEWAY_TIMEOUT,
+                    Json(json!({ "error": "upstream search timed out" })),
                 )
                     .into_response()
             }

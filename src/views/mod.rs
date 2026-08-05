@@ -12,6 +12,7 @@ use once_cell::sync::Lazy;
 use sqlx::PgPool;
 use subtle::ConstantTimeEq;
 use tower_http::{
+    compression::CompressionLayer,
     limit::RequestBodyLimitLayer,
     request_id::{MakeRequestId, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     timeout::TimeoutLayer,
@@ -129,6 +130,7 @@ pub async fn get_router() -> Router {
         .merge(app_router)
         .merge(health_router)
         .merge(metric_router)
+        .layer(CompressionLayer::new())
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(
             TraceLayer::new_for_http()

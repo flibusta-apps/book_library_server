@@ -1,8 +1,17 @@
+use std::time::Duration;
+
 use meilisearch_sdk::client::Client;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
 use crate::config::CONFIG;
+
+/// Request budget for outbound Meilisearch calls (Spec 12.4). meilisearch-sdk
+/// 0.29.1 doesn't expose a way to configure a request timeout on the
+/// underlying `reqwest::Client` (see `MEILI_CLIENT` below), so call sites wrap
+/// each search with `tokio::time::timeout(MEILI_TIMEOUT, ...)` instead,
+/// mapping an elapsed budget to `ApiError::MeiliTimeout`.
+pub const MEILI_TIMEOUT: Duration = Duration::from_secs(5);
 
 // Shared Meilisearch client, built once at first use and reused across all
 // requests so the underlying reqwest client (and its TCP/TLS connection pool)
