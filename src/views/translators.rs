@@ -10,7 +10,7 @@ use axum::{
 
 use crate::{
     error::ApiError,
-    meilisearch::{get_meili_client, AuthorMeili},
+    meilisearch::{AuthorMeili, MEILI_CLIENT},
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
@@ -197,7 +197,7 @@ async fn search_translators(
     };
     let query = truncated_query.as_str();
 
-    let client = get_meili_client()?;
+    let client = &MEILI_CLIENT;
 
     let authors_index = client.index("authors");
 
@@ -207,12 +207,20 @@ async fn search_translators(
         .search()
         .with_query(query)
         .with_filter(&filter)
+        // `Pagination` validation guarantees `page >= 1` and `size` within
+        // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
         .with_offset(
-            ((pagination.page - 1) * pagination.size)
+            pagination
+                .offset()
                 .try_into()
-                .unwrap_or(0),
+                .expect("pagination values are validated to be non-negative"),
         )
-        .with_limit(pagination.size.try_into().unwrap_or(50))
+        .with_limit(
+            pagination
+                .size
+                .try_into()
+                .expect("pagination size is validated to be non-negative"),
+        )
         .execute::<AuthorMeili>()
         .await?;
 

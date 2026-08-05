@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use axum::{
     http::{self, Request, StatusCode},
     middleware::{self, Next},
@@ -6,12 +8,35 @@ use axum::{
     Extension, Router,
 };
 use axum_prometheus::PrometheusMetricLayer;
+use once_cell::sync::Lazy;
 use sqlx::PgPool;
 use subtle::ConstantTimeEq;
-use tower_http::trace::{self, TraceLayer};
+use tower_http::{
+    limit::RequestBodyLimitLayer,
+    request_id::{MakeRequestId, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
+    timeout::TimeoutLayer,
+    trace::{self, TraceLayer},
+};
 use tracing::Level;
+use uuid::Uuid;
 
-use crate::{config::CONFIG, db::get_postgres_pool};
+use crate::{config::CONFIG, db::get_postgres_pool, meilisearch::MEILI_CLIENT};
+
+/// HTTP server-side request timeout. Slow clients / stalled upstreams get cut
+/// off instead of tying up a task forever.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+/// Max accepted request body size (10 MiB).
+const REQUEST_BODY_LIMIT: usize = 10 * 1024 * 1024;
+
+#[derive(Clone, Default)]
+struct MakeRequestUuid;
+
+impl MakeRequestId for MakeRequestUuid {
+    fn make_request_id<B>(&mut self, _request: &Request<B>) -> Option<RequestId> {
+        let id = Uuid::new_v4().to_string();
+        http::HeaderValue::from_str(&id).ok().map(RequestId::new)
+    }
+}
 
 use self::translators::get_translators_router;
 use self::{
@@ -52,12 +77,31 @@ async fn auth(req: Request<axum::body::Body>, next: Next) -> Result<Response, St
     Ok(next.run(req).await)
 }
 
+/// Pure liveness probe: always returns 200 if the process is up and able to
+/// respond, regardless of downstream dependency health.
 async fn health_check() -> StatusCode {
     StatusCode::OK
 }
 
+/// Readiness probe: verifies the PostgreSQL pool can actually serve a query.
+/// Returns 503 if the database is unreachable/exhausted so orchestrators can
+/// take the instance out of rotation instead of routing traffic to it.
+async fn ready_check(Extension(pool): Extension<PgPool>) -> StatusCode {
+    match sqlx::query_scalar!("SELECT 1").fetch_one(&pool).await {
+        Ok(_) => StatusCode::OK,
+        Err(err) => {
+            tracing::error!(error = %err, "readiness check failed: database unreachable");
+            StatusCode::SERVICE_UNAVAILABLE
+        }
+    }
+}
+
 pub async fn get_router() -> Router {
     let client = get_postgres_pool().await;
+
+    // Touch the shared Meilisearch client once at startup so it's constructed
+    // eagerly rather than lazily on first request.
+    Lazy::force(&MEILI_CLIENT);
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayer::pair();
 
@@ -73,6 +117,7 @@ pub async fn get_router() -> Router {
 
     let health_router = Router::new()
         .route("/health", get(health_check))
+        .route("/ready", get(ready_check))
         .layer(Extension(client));
 
     let metric_router = Router::new()
@@ -83,9 +128,13 @@ pub async fn get_router() -> Router {
         .merge(app_router)
         .merge(health_router)
         .merge(metric_router)
+        .layer(PropagateRequestIdLayer::x_request_id())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+        .layer(TimeoutLayer::new(REQUEST_TIMEOUT))
+        .layer(RequestBodyLimitLayer::new(REQUEST_BODY_LIMIT))
 }

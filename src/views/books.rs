@@ -8,7 +8,7 @@ use axum::{
 
 use crate::{
     error::ApiError,
-    meilisearch::{get_meili_client, BookMeili},
+    meilisearch::{BookMeili, MEILI_CLIENT},
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
@@ -145,7 +145,7 @@ pub async fn get_books(
         book_filter.uploaded_lte,
         book_filter.id_gte,
         book_filter.id_lte,
-        (pagination.page - 1) * pagination.size,
+        pagination.offset(),
         pagination.size,
     )
         .fetch_all(&db.0)
@@ -205,7 +205,7 @@ pub async fn get_base_books(
         book_filter.uploaded_lte,
         book_filter.id_gte,
         book_filter.id_lte,
-        (pagination.page - 1) * pagination.size,
+        pagination.offset(),
         pagination.size,
     )
         .fetch_all(&db.0)
@@ -221,7 +221,7 @@ pub async fn get_random_book(
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<RandomBookFilter>,
 ) -> Result<impl IntoResponse, ApiError> {
     let book_id = {
-        let client = get_meili_client()?;
+        let client = &MEILI_CLIENT;
 
         let authors_index = client.index("books");
 
@@ -500,7 +500,7 @@ pub async fn search_books(
     };
     let query = truncated_query.as_str();
 
-    let client = get_meili_client()?;
+    let client = &MEILI_CLIENT;
 
     let book_index = client.index("books");
 
@@ -510,12 +510,20 @@ pub async fn search_books(
         .search()
         .with_query(query)
         .with_filter(&filter)
+        // `Pagination` validation guarantees `page >= 1` and `size` within
+        // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
         .with_offset(
-            ((pagination.page - 1) * pagination.size)
+            pagination
+                .offset()
                 .try_into()
-                .unwrap_or(0),
+                .expect("pagination values are validated to be non-negative"),
         )
-        .with_limit(pagination.size.try_into().unwrap_or(50))
+        .with_limit(
+            pagination
+                .size
+                .try_into()
+                .expect("pagination size is validated to be non-negative"),
+        )
         .execute::<BookMeili>()
         .await?;
 

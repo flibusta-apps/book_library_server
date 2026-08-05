@@ -9,31 +9,39 @@ use sentry::{integrations::debug_images::DebugImagesIntegration, types::Dsn, Cli
 use sentry_tracing::EventFilter;
 use std::{net::SocketAddr, str::FromStr};
 use tracing::info;
-use tracing_subscriber::{filter, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use crate::views::get_router;
 
 #[tokio::main]
 async fn main() {
-    let options = ClientOptions {
-        dsn: Some(
-            Dsn::from_str(&config::CONFIG.sentry_dsn).expect("SENTRY_DSN is not a valid DSN"),
-        ),
-        default_integrations: false,
-        ..Default::default()
-    }
-    .add_integration(DebugImagesIntegration::new());
+    // Sentry is optional: when `SENTRY_DSN` is unset/empty the service still
+    // starts (useful for local dev/tests), it just doesn't report to Sentry.
+    let _guard = config::CONFIG.sentry_dsn.as_ref().map(|dsn| {
+        let options = ClientOptions {
+            dsn: Some(Dsn::from_str(dsn).expect("SENTRY_DSN is not a valid DSN")),
+            // Keep default integrations enabled (PanicIntegration,
+            // AttachStacktraceIntegration, ContextIntegration, ...) so panics
+            // are actually captured, on top of DebugImagesIntegration.
+            ..Default::default()
+        }
+        .add_integration(DebugImagesIntegration::new());
 
-    let _guard = sentry::init(options);
+        sentry::init(options)
+    });
 
     let sentry_layer = sentry_tracing::layer().event_filter(|md| match md.level() {
         &tracing::Level::ERROR => EventFilter::Event,
         _ => EventFilter::Ignore,
     });
 
+    // `RUST_LOG` (e.g. `RUST_LOG=debug`) controls verbosity at runtime;
+    // defaults to `info` when unset/invalid.
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer().with_target(false))
-        .with(filter::LevelFilter::INFO)
+        .with(env_filter)
         .with(sentry_layer)
         .init();
 
