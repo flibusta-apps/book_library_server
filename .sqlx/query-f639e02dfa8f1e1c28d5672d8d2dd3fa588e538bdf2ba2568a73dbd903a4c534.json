@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        -- fb2 expansion is source-independent today because \"flibusta\" is the only source in this DB; add a source check here if a second source is ever introduced (see docs/specs/11-duplication-dead-code.md#11.2).\n        SELECT DISTINCT unnest(\n            available_types(b.file_type)\n        ) AS \"file_type!: String\"\n        FROM books b\n        JOIN translations t ON b.id = t.book\n        WHERE\n            b.is_deleted = false\n            AND t.author = $1\n            AND b.lang = ANY($2)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_type!: String",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "f639e02dfa8f1e1c28d5672d8d2dd3fa588e538bdf2ba2568a73dbd903a4c534"
+}

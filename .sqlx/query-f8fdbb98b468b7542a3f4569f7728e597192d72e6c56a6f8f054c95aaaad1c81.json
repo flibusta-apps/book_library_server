@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            b.id,\n            available_types(b.file_type) AS \"available_types!: Vec<String>\"\n        FROM books b\n        WHERE lang = ANY($1) AND\n        ($2::boolean IS NULL OR is_deleted = $2) AND\n        ($3::date IS NULL OR uploaded >= $3) AND\n        ($4::date IS NULL OR uploaded <= $4) AND\n        ($5::integer IS NULL OR id >= $5) AND\n        ($6::integer IS NULL OR id <= $6)\n        ORDER BY b.id ASC\n        OFFSET $7\n        LIMIT $8\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "available_types!: Vec<String>",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Bool",
+        "Date",
+        "Date",
+        "Int4",
+        "Int4",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "f8fdbb98b468b7542a3f4569f7728e597192d72e6c56a6f8f054c95aaaad1c81"
+}
