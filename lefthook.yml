@@ -1,0 +1,16 @@
+output:
+  - execution_out
+  - failure
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: cargo fmt
+      run: cargo fmt --all --check
+      fail_text: "Run `cargo fmt --all` to fix formatting"
+
+    - name: cargo check
+      run: cargo check --workspace --all-targets
+
+    - name: cargo clippy
+      run: cargo clippy --workspace --all-targets -- -D warnings

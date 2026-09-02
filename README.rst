@@ -107,6 +107,6 @@ Development
 
 .. code-block:: bash
 
-    cargo fmt                  # format (required, pre-commit enforced)
-    cargo clippy                # lint (required, pre-commit + CI enforced)
+    cargo fmt                  # format (required, lefthook enforced)
+    cargo clippy                # lint (required, lefthook + CI enforced)
     cargo test                  # unit + integration tests
