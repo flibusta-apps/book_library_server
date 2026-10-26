@@ -9,6 +9,21 @@ jobs:
   ci:
     name: ci
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # tests/integration_router_auth.rs connects to this DB on port 5433
+          POSTGRES_DB: routertest
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -33,3 +48,4 @@ jobs:
         run: cargo test --all-features
         env:
           SQLX_OFFLINE: "true"
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/routertest
