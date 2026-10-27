@@ -1,0 +1,3 @@
+[advisories]
+# rsa comes only via sqlx-macros-core -> sqlx-mysql (compile-time macro dep, mysql feature not used at runtime); no fix available.
+ignore = ["RUSTSEC-2023-0071"]
