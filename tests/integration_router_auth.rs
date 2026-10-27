@@ -63,7 +63,7 @@ async fn router_auth_policy() {
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/api/v1/books/")
+                .uri("/api/v1/books")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -72,7 +72,7 @@ async fn router_auth_policy() {
     assert_eq!(
         response.status(),
         StatusCode::UNAUTHORIZED,
-        "expected /api/v1/books/ without auth to be rejected"
+        "expected /api/v1/books without auth to be rejected"
     );
 
     // `/api/v1/*` with the correct `Authorization` header -> passes auth
@@ -81,18 +81,39 @@ async fn router_auth_policy() {
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/api/v1/books/")
+                .uri("/api/v1/books")
                 .header(header::AUTHORIZATION, TEST_API_KEY)
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert_ne!(
+    assert_eq!(
         response.status(),
-        StatusCode::UNAUTHORIZED,
-        "expected /api/v1/books/ with correct auth to pass the auth layer"
+        StatusCode::OK,
+        "expected /api/v1/books with correct auth to succeed"
     );
+
+    // C3: both `/api/v1/books/base` and `/api/v1/books/base/` must be routed
+    // (never 404/405) -- with auth they reach the handler.
+    for uri in ["/api/v1/books/base", "/api/v1/books/base/"] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(uri)
+                    .header(header::AUTHORIZATION, TEST_API_KEY)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "expected {uri} to be served"
+        );
+    }
 
     // `/metrics` with no `Authorization` header -> 401 (Spec 02.1).
     let response = app

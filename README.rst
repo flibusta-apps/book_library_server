@@ -28,7 +28,7 @@ startup:
 - ``MEILI_HOST`` — Meilisearch host URL.
 - ``MEILI_MASTER_KEY`` — Meilisearch master/API key.
 - ``MEILI_HTTP_TIMEOUT_SECS`` — optional; HTTP timeout for the
-  Meilisearch client. Default: ``10``.
+  Meilisearch requests (seconds, must be > 0). Default: ``5``.
 - ``SENTRY_DSN`` — optional Sentry project DSN. When unset/empty, Sentry
   is not initialized.
 

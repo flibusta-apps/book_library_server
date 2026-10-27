@@ -12,6 +12,11 @@ fn default_size() -> i64 {
 /// for huge result sets (see docs/specs/06-pagination-input-validation.md).
 pub const MAX_PAGE_SIZE: i64 = 200;
 
+/// Maximum allowed `page` number. Together with `MAX_PAGE_SIZE` this bounds
+/// the row offset to `100_000 * 200`, far below `i64::MAX`, so offset math can
+/// never overflow.
+pub const MAX_PAGE: i64 = 100_000;
+
 /// Raw, unvalidated shape used only to drive `serde` deserialization; never
 /// exposed outside this module.
 #[derive(Deserialize)]
@@ -36,11 +41,24 @@ pub struct Pagination {
 }
 
 impl Pagination {
-    /// Row offset for the current page. Safe to use directly in `OFFSET`/
-    /// Meilisearch offset since `page >= 1` and `size >= 1` are guaranteed
-    /// by validation.
+    /// Row offset for the current page. Validation bounds `page` and `size`
+    /// so this cannot overflow; checked arithmetic is still used and
+    /// saturates rather than panicking if the invariant is ever violated.
     pub fn offset(&self) -> i64 {
-        (self.page - 1) * self.size
+        self.page
+            .checked_sub(1)
+            .and_then(|p| p.checked_mul(self.size))
+            .unwrap_or(i64::MAX)
+    }
+
+    /// Offset as `usize` (for Meilisearch). Saturates instead of panicking.
+    pub fn offset_usize(&self) -> usize {
+        usize::try_from(self.offset()).unwrap_or(usize::MAX)
+    }
+
+    /// Page size as `usize` (for Meilisearch). Saturates instead of panicking.
+    pub fn limit_usize(&self) -> usize {
+        usize::try_from(self.size).unwrap_or(usize::MAX)
     }
 }
 
@@ -51,8 +69,10 @@ impl<'de> Deserialize<'de> for Pagination {
     {
         let raw = RawPagination::deserialize(deserializer)?;
 
-        if raw.page < 1 {
-            return Err(de::Error::custom("`page` must be >= 1"));
+        if raw.page < 1 || raw.page > MAX_PAGE {
+            return Err(de::Error::custom(format!(
+                "`page` must be between 1 and {MAX_PAGE}"
+            )));
         }
 
         if raw.size < 1 || raw.size > MAX_PAGE_SIZE {
@@ -72,7 +92,7 @@ impl<'de> Deserialize<'de> for Pagination {
 /// `Pagination` validation guarantees `size > 0`.
 fn calc_pages(total: i64, size: i64) -> i64 {
     let total = total.max(0);
-    (total + size - 1) / size
+    total / size + i64::from(total % size != 0)
 }
 
 #[derive(Serialize)]
@@ -150,6 +170,22 @@ mod tests {
 
         let result = deserialize(serde_json::json!({ "page": 1, "size": -5 }));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_page_over_max() {
+        let result = deserialize(serde_json::json!({ "page": MAX_PAGE + 1, "size": 10 }));
+        assert!(result.is_err());
+
+        let result = deserialize(serde_json::json!({ "page": i64::MAX, "size": 200 }));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn max_page_offset_does_not_overflow() {
+        let p = deserialize(serde_json::json!({ "page": MAX_PAGE, "size": MAX_PAGE_SIZE }))
+            .expect("valid");
+        assert_eq!(p.offset(), (MAX_PAGE - 1) * MAX_PAGE_SIZE);
     }
 
     #[test]

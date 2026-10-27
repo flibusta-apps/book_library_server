@@ -10,16 +10,18 @@ use axum::{
 
 use crate::{
     error::ApiError,
-    meilisearch::{SequenceMeili, MEILI_CLIENT, MEILI_TIMEOUT},
+    meilisearch::{clamp_total_hits, SequenceMeili, MEILI_CLIENT, MEILI_TIMEOUT},
     serializers::{
         allowed_langs::AllowedLangs,
-        author::Author,
         pagination::{Page, PageWithParent, Pagination},
         sequence::{Sequence, SequenceBook},
     },
 };
 
-use super::{common::get_random_item::get_random_item, Database};
+use super::{
+    common::{get_random_item::get_random_item, query::normalize_query},
+    Database,
+};
 
 async fn get_random_sequence(
     db: Database,
@@ -59,7 +61,7 @@ async fn search_sequence(
     >,
     pagination: Query<Pagination>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let query: String = query.trim().chars().take(256).collect();
+    let query = normalize_query(&query);
 
     if query.is_empty() {
         let page: Page<Sequence> = Page::new(vec![], 0, &pagination);
@@ -73,31 +75,19 @@ async fn search_sequence(
     let filter = format!("langs IN [{}]", allowed_langs.join(", "));
 
     let result = tokio::time::timeout(
-        MEILI_TIMEOUT,
+        *MEILI_TIMEOUT,
         sequence_index
             .search()
             .with_query(&query)
             .with_filter(&filter)
-            // `Pagination` validation guarantees `page >= 1` and `size` within
-            // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
-            .with_offset(
-                pagination
-                    .offset()
-                    .try_into()
-                    .expect("pagination values are validated to be non-negative"),
-            )
-            .with_limit(
-                pagination
-                    .size
-                    .try_into()
-                    .expect("pagination size is validated to be non-negative"),
-            )
+            .with_offset(pagination.offset_usize())
+            .with_limit(pagination.limit_usize())
             .execute::<SequenceMeili>(),
     )
     .await
     .map_err(|_| ApiError::MeiliTimeout)??;
 
-    let total = result.estimated_total_hits.unwrap_or(0);
+    let total = clamp_total_hits(result.estimated_total_hits);
     let sequence_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
     let mut sequences = sqlx::query_as!(
@@ -118,7 +108,7 @@ async fn search_sequence(
 
     sequences.sort_by_key(|a| rank.get(&a.id).copied().unwrap_or(usize::MAX));
 
-    let page: Page<Sequence> = Page::new(sequences, total.try_into().unwrap_or(0i64), &pagination);
+    let page: Page<Sequence> = Page::new(sequences, total, &pagination);
 
     Ok(Json(page))
 }
@@ -209,8 +199,7 @@ async fn get_sequence_books(
     .await?
     .unwrap_or(0);
 
-    let books = sqlx::query_as!(
-        SequenceBook,
+    let books = sqlx::query_as::<_, SequenceBook>(
         r#"
         SELECT
             b.id,
@@ -218,7 +207,7 @@ async fn get_sequence_books(
             b.lang,
             b.file_type,
             b.year,
-            available_types(b.file_type) AS "available_types!: Vec<String>",
+            available_types(b.file_type) AS available_types,
             b.uploaded,
             COALESCE(
                 (
@@ -238,7 +227,7 @@ async fn get_sequence_books(
                     WHERE book_authors.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS "authors!: Vec<Author>",
+            ) AS authors,
             COALESCE(
                 (
                     SELECT
@@ -257,10 +246,10 @@ async fn get_sequence_books(
                     WHERE translations.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS "translators!: Vec<Author>",
+            ) AS translators,
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
-            ) AS "annotation_exists!: bool",
+            ) AS annotation_exists,
             bs.position
         FROM books b
         JOIN book_sequences bs ON b.id = bs.book
@@ -268,14 +257,14 @@ async fn get_sequence_books(
             b.is_deleted = FALSE AND
             bs.sequence = $1 AND
             b.lang = ANY($2)
-        ORDER BY bs.position
+        ORDER BY bs.position, b.id ASC
         LIMIT $3 OFFSET $4
         "#,
-        sequence.id,
-        &allowed_langs,
-        pagination.size,
-        (pagination.page - 1) * pagination.size,
     )
+    .bind(sequence.id)
+    .bind(&allowed_langs)
+    .bind(pagination.size)
+    .bind(pagination.offset())
     .fetch_all(&db.0)
     .await?;
 

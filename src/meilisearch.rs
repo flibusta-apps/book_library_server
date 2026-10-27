@@ -6,12 +6,24 @@ use serde::Deserialize;
 
 use crate::config::CONFIG;
 
-/// Request budget for outbound Meilisearch calls (Spec 12.4). meilisearch-sdk
-/// 0.29.1 doesn't expose a way to configure a request timeout on the
-/// underlying `reqwest::Client` (see `MEILI_CLIENT` below), so call sites wrap
-/// each search with `tokio::time::timeout(MEILI_TIMEOUT, ...)` instead,
-/// mapping an elapsed budget to `ApiError::MeiliTimeout`.
-pub const MEILI_TIMEOUT: Duration = Duration::from_secs(5);
+/// Request budget for outbound Meilisearch calls. Configured through
+/// `MEILI_HTTP_TIMEOUT_SECS` (default 5). meilisearch-sdk 0.29.1 doesn't expose
+/// a way to configure a request timeout on the underlying `reqwest::Client`,
+/// so call sites wrap each search with `tokio::time::timeout(*MEILI_TIMEOUT, ...)`
+/// instead, mapping an elapsed budget to `ApiError::MeiliTimeout`.
+pub static MEILI_TIMEOUT: Lazy<Duration> =
+    Lazy::new(|| Duration::from_secs(CONFIG.meili_http_timeout_secs));
+
+/// Meilisearch's default `maxTotalHits`: offset+limit pagination cannot reach
+/// beyond this many hits. Keep in sync with the Meilisearch instance settings.
+pub const MEILI_MAX_TOTAL_HITS: usize = 1000;
+
+/// Converts Meilisearch's `estimated_total_hits` into a `total` that does not
+/// promise pages beyond what is actually reachable.
+pub fn clamp_total_hits(estimated: Option<usize>) -> i64 {
+    let clamped = estimated.unwrap_or(0).min(MEILI_MAX_TOTAL_HITS);
+    i64::try_from(clamped).unwrap_or(0)
+}
 
 // Shared Meilisearch client, built once at first use and reused across all
 // requests so the underlying reqwest client (and its TCP/TLS connection pool)
@@ -58,21 +70,6 @@ pub struct BookMeili {
 }
 
 impl GetId for BookMeili {
-    fn get_id(&self) -> i32 {
-        self.id
-    }
-}
-
-#[derive(Deserialize)]
-pub struct GenreMeili {
-    pub id: i32,
-    pub description: String,
-    pub meta: String,
-    pub langs: Vec<String>,
-    pub books_count: i32,
-}
-
-impl GetId for GenreMeili {
     fn get_id(&self) -> i32 {
         self.id
     }
