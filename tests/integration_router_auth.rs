@@ -31,17 +31,42 @@ use tower::ServiceExt;
 
 const TEST_API_KEY: &str = "test-api-key-for-router-auth-test";
 
+const DEFAULT_DATABASE_URL: &str = "postgres://postgres:postgres@localhost:5433/routertest";
+
+/// Splits `postgres://user:password@host:port/db` into its parts.
+fn parse_database_url(url: &str) -> Option<(String, String, String, String, String)> {
+    let rest = url
+        .strip_prefix("postgres://")
+        .or_else(|| url.strip_prefix("postgresql://"))?;
+    let (creds, rest) = rest.split_once('@')?;
+    let (user, password) = creds.split_once(':').unwrap_or((creds, ""));
+    let (hostport, db) = rest.split_once('/')?;
+    let db = db.split('?').next()?;
+    let (host, port) = hostport.split_once(':').unwrap_or((hostport, "5432"));
+    Some((
+        user.to_string(),
+        password.to_string(),
+        host.to_string(),
+        port.to_string(),
+        db.to_string(),
+    ))
+}
+
 fn set_test_env() {
+    let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DATABASE_URL.to_string());
+    let (user, password, host, port, db) = parse_database_url(&url)
+        .or_else(|| parse_database_url(DEFAULT_DATABASE_URL))
+        .expect("valid database url");
     // SAFETY: this test binary's `main` is single-threaded test harness
     // startup; these are set once, before `CONFIG` (a `Lazy`) is first
     // touched by any test in this binary.
     unsafe {
         std::env::set_var("API_KEY", TEST_API_KEY);
-        std::env::set_var("POSTGRES_USER", "postgres");
-        std::env::set_var("POSTGRES_PASSWORD", "postgres");
-        std::env::set_var("POSTGRES_HOST", "localhost");
-        std::env::set_var("POSTGRES_PORT", "5433");
-        std::env::set_var("POSTGRES_DB", "routertest");
+        std::env::set_var("POSTGRES_USER", user);
+        std::env::set_var("POSTGRES_PASSWORD", password);
+        std::env::set_var("POSTGRES_HOST", host);
+        std::env::set_var("POSTGRES_PORT", port);
+        std::env::set_var("POSTGRES_DB", db);
         std::env::set_var("MEILI_HOST", "http://localhost:7700");
         std::env::set_var("MEILI_MASTER_KEY", "test-meili-key");
     }
