@@ -1,8 +1,10 @@
 # API contract
 
-Base path: `/api/v1`. All routes below (except `/health` and `/metrics`) require an
+Base path: `/api/v1`. All routes below, as well as `/metrics`, require an
 `Authorization` header matching `API_KEY` (constant-time compared); unauthenticated
-requests get `401`.
+requests get `401`. `/health` and `/ready` do not require auth.
+
+`GET /api/v1/books/base` and `GET /api/v1/books/base/` are both served.
 
 Resources: `authors`, `translators`, `genres`, `books`, `sequences` — mounted at
 `/api/v1/authors`, `/api/v1/translators`, `/api/v1/genres`, `/api/v1/books`,

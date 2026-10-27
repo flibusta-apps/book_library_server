@@ -5,6 +5,9 @@ on:
     branches: [ "main" ]
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: ci
@@ -49,3 +52,9 @@ jobs:
         env:
           SQLX_OFFLINE: "true"
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/routertest
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit dependencies
+        run: cargo audit

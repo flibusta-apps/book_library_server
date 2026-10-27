@@ -1,16 +1,18 @@
 use crate::config::CONFIG;
 
-use sqlx::{postgres::PgPoolOptions, Executor, PgPool};
+use sqlx::{
+    postgres::{PgConnectOptions, PgPoolOptions},
+    Executor, PgPool,
+};
 
 pub async fn get_postgres_pool() -> PgPool {
-    let database_url: String = format!(
-        "postgresql://{}:{}@{}:{}/{}",
-        CONFIG.postgres_user,
-        CONFIG.postgres_password,
-        CONFIG.postgres_host,
-        CONFIG.postgres_port,
-        CONFIG.postgres_db
-    );
+    let options = PgConnectOptions::new()
+        .host(&CONFIG.postgres_host)
+        .port(CONFIG.postgres_port)
+        .username(&CONFIG.postgres_user)
+        .password(&CONFIG.postgres_password)
+        .database(&CONFIG.postgres_db)
+        .application_name("book_library_server");
 
     let statement_timeout_secs = CONFIG.postgres_statement_timeout_secs;
 
@@ -28,7 +30,7 @@ pub async fn get_postgres_pool() -> PgPool {
                 Ok(())
             })
         })
-        .connect(&database_url)
+        .connect_with(options)
         .await
         .expect("Failed to connect to PostgreSQL");
 

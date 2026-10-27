@@ -18,7 +18,6 @@ debug = false
 strip = true
 lto = true
 codegen-units = 1
-panic = 'abort'
 
 [profile.profiling]
 inherits = "release"

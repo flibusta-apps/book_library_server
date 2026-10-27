@@ -10,7 +10,7 @@ use axum::{
 
 use crate::{
     error::ApiError,
-    meilisearch::{AuthorMeili, MEILI_CLIENT, MEILI_TIMEOUT},
+    meilisearch::{clamp_total_hits, AuthorMeili, MEILI_CLIENT, MEILI_TIMEOUT},
     serializers::{
         allowed_langs::AllowedLangs,
         author::{Author, AuthorBook},
@@ -20,7 +20,10 @@ use crate::{
     },
 };
 
-use super::{common::get_random_item::get_random_item, Database};
+use super::{
+    common::{get_random_item::get_random_item, query::normalize_query},
+    Database,
+};
 
 async fn get_authors(
     db: Database,
@@ -49,7 +52,7 @@ async fn get_authors(
         OFFSET $1
         LIMIT $2
         "#,
-        (pagination.page - 1) * pagination.size,
+        pagination.offset(),
         pagination.size
     )
     .fetch_all(&db.0)
@@ -257,13 +260,13 @@ async fn get_author_books(
         FROM books b
         JOIN book_authors ba ON b.id = ba.book
         WHERE b.is_deleted = false AND ba.author = $1 AND b.lang = ANY($2)
-        ORDER BY b.title ASC
+        ORDER BY b.title ASC, b.id ASC
         OFFSET $3
         LIMIT $4
         "#,
         author_id,
         &allowed_langs,
-        (pagination.page - 1) * pagination.size,
+        pagination.offset(),
         pagination.size
     )
     .fetch_all(&db.0)
@@ -309,8 +312,8 @@ async fn search_authors(
     >,
     pagination: Query<Pagination>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let query = query.trim();
-    let query = &query[..query.len().min(256)];
+    let query = normalize_query(&query);
+    let query = query.as_str();
 
     if query.is_empty() {
         let page: Page<Author> = Page::new(vec![], 0, &pagination);
@@ -324,31 +327,19 @@ async fn search_authors(
     let filter = format!("author_langs IN [{}]", allowed_langs.join(", "));
 
     let result = tokio::time::timeout(
-        MEILI_TIMEOUT,
+        *MEILI_TIMEOUT,
         authors_index
             .search()
             .with_query(query)
             .with_filter(&filter)
-            // `Pagination` validation guarantees `page >= 1` and `size` within
-            // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
-            .with_offset(
-                pagination
-                    .offset()
-                    .try_into()
-                    .expect("pagination values are validated to be non-negative"),
-            )
-            .with_limit(
-                pagination
-                    .size
-                    .try_into()
-                    .expect("pagination size is validated to be non-negative"),
-            )
+            .with_offset(pagination.offset_usize())
+            .with_limit(pagination.limit_usize())
             .execute::<AuthorMeili>(),
     )
     .await
     .map_err(|_| ApiError::MeiliTimeout)??;
 
-    let total = result.estimated_total_hits.unwrap_or(0);
+    let total = clamp_total_hits(result.estimated_total_hits);
     let author_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
     let mut authors = sqlx::query_as!(
@@ -380,7 +371,7 @@ async fn search_authors(
 
     authors.sort_by_key(|author| rank_map.get(&author.id).copied().unwrap_or(usize::MAX));
 
-    let page: Page<Author> = Page::new(authors, total.try_into().unwrap_or(0i64), &pagination);
+    let page: Page<Author> = Page::new(authors, total, &pagination);
 
     Ok(Json(page))
 }

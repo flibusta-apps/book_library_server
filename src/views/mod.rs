@@ -138,6 +138,9 @@ pub async fn get_router() -> Router {
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-        .layer(TimeoutLayer::new(REQUEST_TIMEOUT))
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::REQUEST_TIMEOUT,
+            REQUEST_TIMEOUT,
+        ))
         .layer(RequestBodyLimitLayer::new(REQUEST_BODY_LIMIT))
 }

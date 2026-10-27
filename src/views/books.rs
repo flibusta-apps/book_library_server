@@ -8,7 +8,7 @@ use axum::{
 
 use crate::{
     error::ApiError,
-    meilisearch::{BookMeili, MEILI_CLIENT, MEILI_TIMEOUT},
+    meilisearch::{clamp_total_hits, BookMeili, MEILI_CLIENT, MEILI_TIMEOUT},
     serializers::{
         allowed_langs::AllowedLangs,
         author::Author,
@@ -23,7 +23,7 @@ use crate::{
 
 use super::{
     book_sql::{count_books, query_detail_book},
-    common::get_random_item::get_random_item,
+    common::{get_random_item::get_random_item, query::normalize_query},
     Database,
 };
 
@@ -230,20 +230,14 @@ pub async fn search_books(
     >,
     pagination: Query<Pagination>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let query = query.trim();
+    let query = normalize_query(&query);
+    let query = query.as_str();
 
     if query.is_empty() {
         let page: Page<Book> = Page::new(vec![], 0, &pagination);
 
         return Ok(Json(page));
     }
-
-    let truncated_query: String = if query.chars().count() > 256 {
-        query.chars().take(256).collect()
-    } else {
-        query.to_string()
-    };
-    let query = truncated_query.as_str();
 
     let client = &MEILI_CLIENT;
 
@@ -252,31 +246,19 @@ pub async fn search_books(
     let filter = format!("lang IN [{}]", allowed_langs.join(", "));
 
     let result = tokio::time::timeout(
-        MEILI_TIMEOUT,
+        *MEILI_TIMEOUT,
         book_index
             .search()
             .with_query(query)
             .with_filter(&filter)
-            // `Pagination` validation guarantees `page >= 1` and `size` within
-            // [1, MAX_PAGE_SIZE], so these `i64 -> usize` conversions cannot fail.
-            .with_offset(
-                pagination
-                    .offset()
-                    .try_into()
-                    .expect("pagination values are validated to be non-negative"),
-            )
-            .with_limit(
-                pagination
-                    .size
-                    .try_into()
-                    .expect("pagination size is validated to be non-negative"),
-            )
+            .with_offset(pagination.offset_usize())
+            .with_limit(pagination.limit_usize())
             .execute::<BookMeili>(),
     )
     .await
     .map_err(|_| ApiError::MeiliTimeout)??;
 
-    let total = result.estimated_total_hits.unwrap_or(0);
+    let total = clamp_total_hits(result.estimated_total_hits);
     let book_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
     let mut books = sqlx::query_as!(
@@ -362,7 +344,7 @@ pub async fn search_books(
 
     books.sort_by_key(|book| rank_map.get(&book.id).copied().unwrap_or(usize::MAX));
 
-    let page: Page<Book> = Page::new(books, total.try_into().unwrap_or(0i64), &pagination);
+    let page: Page<Book> = Page::new(books, total, &pagination);
 
     Ok(Json(page))
 }
@@ -409,9 +391,32 @@ pub fn get_books_router() -> Router {
     Router::new()
         .route("/", get(get_books))
         .route("/base", get(get_base_books))
+        .route("/base/", get(get_base_books))
         .route("/random", get(get_random_book))
         .route("/remote/{source_id}/{remote_id}", get(get_remote_book))
         .route("/search/{query}", get(search_books))
         .route("/{book_id}", get(get_book))
         .route("/{book_id}/annotation", get(get_book_annotation))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
+
+    /// C3: both `/base` and `/base/` must be routed. No DB is needed: without
+    /// the `Database` extension the handler fails extraction (500), but a
+    /// missing route would be 404/405.
+    #[tokio::test]
+    async fn base_routes_exist_with_and_without_trailing_slash() {
+        for uri in ["/base", "/base/"] {
+            let response = get_books_router()
+                .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_ne!(response.status(), StatusCode::NOT_FOUND, "{uri}");
+            assert_ne!(response.status(), StatusCode::METHOD_NOT_ALLOWED, "{uri}");
+        }
+    }
 }
