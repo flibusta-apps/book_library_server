@@ -15,6 +15,7 @@ use crate::{
         allowed_langs::AllowedLangs,
         author::Author,
         pagination::{Page, PageWithParent, Pagination},
+        sequence::Sequence,
         translator::TranslatorBook,
     },
 };
@@ -72,7 +73,8 @@ async fn get_translated_books(
     .await?
     .unwrap_or(0);
 
-    let books = sqlx::query_as::<_, TranslatorBook>(
+    let books = sqlx::query_as!(
+        TranslatorBook,
         r#"
         SELECT
             b.id,
@@ -80,7 +82,7 @@ async fn get_translated_books(
             b.lang,
             b.file_type,
             b.year,
-            available_types(b.file_type) AS available_types,
+            available_types(b.file_type) AS "available_types!: Vec<String>",
             b.uploaded,
             COALESCE(
                 (
@@ -100,7 +102,7 @@ async fn get_translated_books(
                     WHERE book_authors.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS authors,
+            ) AS "authors!: Vec<Author>",
             COALESCE(
                 (
                     SELECT
@@ -115,10 +117,10 @@ async fn get_translated_books(
                     WHERE book_sequences.book = b.id
                 ),
                 ARRAY[]::sequence_type[]
-            ) AS sequences,
+            ) AS "sequences!: Vec<Sequence>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
-            ) AS annotation_exists
+            ) AS "annotation_exists!: bool"
         FROM books b
         JOIN translations t ON b.id = t.book
         WHERE
@@ -129,11 +131,11 @@ async fn get_translated_books(
         OFFSET $3
         LIMIT $4
         "#,
+        translator_id,
+        &allowed_langs,
+        pagination.offset(),
+        pagination.size
     )
-    .bind(translator_id)
-    .bind(&allowed_langs)
-    .bind(pagination.offset())
-    .bind(pagination.size)
     .fetch_all(&db.0)
     .await?;
 

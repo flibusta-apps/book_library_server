@@ -13,6 +13,7 @@ use crate::{
     meilisearch::{clamp_total_hits, SequenceMeili, MEILI_CLIENT, MEILI_TIMEOUT},
     serializers::{
         allowed_langs::AllowedLangs,
+        author::Author,
         pagination::{Page, PageWithParent, Pagination},
         sequence::{Sequence, SequenceBook},
     },
@@ -199,7 +200,8 @@ async fn get_sequence_books(
     .await?
     .unwrap_or(0);
 
-    let books = sqlx::query_as::<_, SequenceBook>(
+    let books = sqlx::query_as!(
+        SequenceBook,
         r#"
         SELECT
             b.id,
@@ -207,7 +209,7 @@ async fn get_sequence_books(
             b.lang,
             b.file_type,
             b.year,
-            available_types(b.file_type) AS available_types,
+            available_types(b.file_type) AS "available_types!: Vec<String>",
             b.uploaded,
             COALESCE(
                 (
@@ -227,7 +229,7 @@ async fn get_sequence_books(
                     WHERE book_authors.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS authors,
+            ) AS "authors!: Vec<Author>",
             COALESCE(
                 (
                     SELECT
@@ -246,10 +248,10 @@ async fn get_sequence_books(
                     WHERE translations.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS translators,
+            ) AS "translators!: Vec<Author>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
-            ) AS annotation_exists,
+            ) AS "annotation_exists!: bool",
             bs.position
         FROM books b
         JOIN book_sequences bs ON b.id = bs.book
@@ -260,11 +262,11 @@ async fn get_sequence_books(
         ORDER BY bs.position, b.id ASC
         LIMIT $3 OFFSET $4
         "#,
+        sequence.id,
+        &allowed_langs,
+        pagination.size,
+        pagination.offset()
     )
-    .bind(sequence.id)
-    .bind(&allowed_langs)
-    .bind(pagination.size)
-    .bind(pagination.offset())
     .fetch_all(&db.0)
     .await?;
 

@@ -16,6 +16,7 @@ use crate::{
         author::{Author, AuthorBook},
         author_annotation::AuthorAnnotation,
         pagination::{Page, PageWithParent, Pagination},
+        sequence::Sequence,
     },
 };
 
@@ -208,7 +209,8 @@ async fn get_author_books(
     .await?
     .unwrap_or(0);
 
-    let books = sqlx::query_as::<_, AuthorBook>(
+    let books = sqlx::query_as!(
+        AuthorBook,
         r#"
         SELECT
             b.id,
@@ -216,7 +218,7 @@ async fn get_author_books(
             b.lang,
             b.file_type,
             b.year,
-            available_types(b.file_type) AS available_types,
+            available_types(b.file_type) AS "available_types!: Vec<String>",
             b.uploaded,
             COALESCE(
                 (
@@ -236,7 +238,7 @@ async fn get_author_books(
                     WHERE translations.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS translators,
+            ) AS "translators!: Vec<Author>",
             COALESCE(
                 (
                     SELECT
@@ -251,10 +253,10 @@ async fn get_author_books(
                     WHERE book_sequences.book = b.id
                 ),
                 ARRAY[]::sequence_type[]
-            ) AS sequences,
+            ) AS "sequences!: Vec<Sequence>",
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
-            ) AS annotation_exists
+            ) AS "annotation_exists!: bool"
         FROM books b
         JOIN book_authors ba ON b.id = ba.book
         WHERE b.is_deleted = false AND ba.author = $1 AND b.lang = ANY($2)
@@ -262,11 +264,11 @@ async fn get_author_books(
         OFFSET $3
         LIMIT $4
         "#,
+        author_id,
+        &allowed_langs,
+        pagination.offset(),
+        pagination.size
     )
-    .bind(author_id)
-    .bind(&allowed_langs)
-    .bind(pagination.offset())
-    .bind(pagination.size)
     .fetch_all(&db.0)
     .await?;
 
