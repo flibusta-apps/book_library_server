@@ -400,7 +400,7 @@ dependencies = [
  "http-body-util",
  "meilisearch-sdk",
  "once_cell",
- "rand 0.9.5",
+ "rand 0.10.3",
  "sentry",
  "sentry-tracing",
  "serde",
