@@ -22,7 +22,7 @@ use crate::{
 };
 
 use super::{
-    book_sql::{count_books, query_detail_book, random_book_candidate},
+    book_sql::{count_books, query_detail_book, random_book_candidate, search_books_by_ids},
     common::{get_random_item::get_random_item, query::normalize_query},
     Database,
 };
@@ -261,80 +261,7 @@ pub async fn search_books(
     let total = clamp_total_hits(result.estimated_total_hits);
     let book_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
-    let mut books = sqlx::query_as::<_, Book>(
-        r#"
-        SELECT
-            b.id,
-            b.title,
-            b.lang,
-            b.file_type,
-            b.year,
-            available_types(b.file_type) AS available_types,
-            b.uploaded,
-            COALESCE(
-                (
-                    SELECT
-                        ARRAY_AGG(
-                            ROW(
-                                authors.id,
-                                authors.first_name,
-                                authors.last_name,
-                                COALESCE(authors.middle_name, ''),
-                                aa.author IS NOT NULL
-                            )::author_type
-                        )
-                    FROM book_authors
-                    JOIN authors ON authors.id = book_authors.author
-                    LEFT JOIN author_annotations aa ON aa.author = authors.id
-                    WHERE book_authors.book = b.id
-                ),
-                ARRAY[]::author_type[]
-            ) AS authors,
-            COALESCE(
-                (
-                    SELECT
-                        ARRAY_AGG(
-                            ROW(
-                                authors.id,
-                                authors.first_name,
-                                authors.last_name,
-                                COALESCE(authors.middle_name, ''),
-                                aa.author IS NOT NULL
-                            )::author_type
-                        )
-                    FROM translations
-                    JOIN authors ON authors.id = translations.author
-                    LEFT JOIN author_annotations aa ON aa.author = authors.id
-                    WHERE translations.book = b.id
-                ),
-                ARRAY[]::author_type[]
-            ) AS translators,
-            COALESCE(
-                (
-                    SELECT
-                        ARRAY_AGG(
-                            ROW(
-                                sequences.id,
-                                sequences.name
-                            )::sequence_type
-                        )
-                    FROM book_sequences
-                    JOIN sequences ON sequences.id = book_sequences.sequence
-                    WHERE book_sequences.book = b.id
-                ),
-                ARRAY[]::sequence_type[]
-            ) AS sequences,
-            EXISTS(
-                SELECT * FROM book_annotations WHERE book = b.id
-            ) AS annotation_exists
-        FROM books b
-        WHERE b.id = ANY($1) AND NOT b.is_deleted AND b.lang = ANY($2)
-        "#,
-    )
-    .bind(&book_ids)
-    .bind(&allowed_langs)
-    .fetch_all(&db.0)
-    .await?;
+    let mut books = search_books_by_ids(&db.0, &book_ids, &allowed_langs).await?;
 
     let rank_map: std::collections::HashMap<i32, usize> = book_ids
         .iter()

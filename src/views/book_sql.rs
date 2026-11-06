@@ -127,14 +127,16 @@ pub(crate) use query_detail_book;
 
 /// Revalidate a Meilisearch candidate against the authoritative database.
 /// Runtime bindings keep the existing compile-time query cache unchanged.
-pub(crate) async fn random_book_candidate(
+pub async fn random_book_candidate(
     pool: &sqlx::PgPool,
     id: i32,
     allowed_langs: &[String],
 ) -> Result<Option<crate::serializers::book::DetailBook>, sqlx::Error> {
     sqlx::query_as(
         r#"
-        SELECT b.*, available_types(b.file_type) AS available_types,
+        SELECT b.id, b.title, b.lang, b.file_type, b.year::int4 AS year, b.uploaded,
+            b.remote_id, b.is_deleted, b.pages,
+            available_types(b.file_type) AS available_types,
             COALESCE((
                 SELECT ARRAY_AGG(ROW(a.id, a.first_name, a.last_name,
                     COALESCE(a.middle_name, ''), aa.author IS NOT NULL)::author_type)
@@ -169,6 +171,90 @@ pub(crate) async fn random_book_candidate(
     .bind(id)
     .bind(allowed_langs)
     .fetch_optional(pool)
+    .await
+}
+
+/// Hydrate Meilisearch hits from the authoritative database, dropping deleted
+/// books and books outside `allowed_langs`. `year` is SMALLINT in the schema
+/// and must be cast for the runtime-decoded `i32` field.
+pub async fn search_books_by_ids(
+    pool: &sqlx::PgPool,
+    book_ids: &[i32],
+    allowed_langs: &[String],
+) -> Result<Vec<crate::serializers::book::Book>, sqlx::Error> {
+    sqlx::query_as::<_, crate::serializers::book::Book>(
+        r#"
+        SELECT
+            b.id,
+            b.title,
+            b.lang,
+            b.file_type,
+            b.year::int4 AS year,
+            available_types(b.file_type) AS available_types,
+            b.uploaded,
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                COALESCE(authors.middle_name, ''),
+                                aa.author IS NOT NULL
+                            )::author_type
+                        )
+                    FROM book_authors
+                    JOIN authors ON authors.id = book_authors.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
+                    WHERE book_authors.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS authors,
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                authors.id,
+                                authors.first_name,
+                                authors.last_name,
+                                COALESCE(authors.middle_name, ''),
+                                aa.author IS NOT NULL
+                            )::author_type
+                        )
+                    FROM translations
+                    JOIN authors ON authors.id = translations.author
+                    LEFT JOIN author_annotations aa ON aa.author = authors.id
+                    WHERE translations.book = b.id
+                ),
+                ARRAY[]::author_type[]
+            ) AS translators,
+            COALESCE(
+                (
+                    SELECT
+                        ARRAY_AGG(
+                            ROW(
+                                sequences.id,
+                                sequences.name
+                            )::sequence_type
+                        )
+                    FROM book_sequences
+                    JOIN sequences ON sequences.id = book_sequences.sequence
+                    WHERE book_sequences.book = b.id
+                ),
+                ARRAY[]::sequence_type[]
+            ) AS sequences,
+            EXISTS(
+                SELECT * FROM book_annotations WHERE book = b.id
+            ) AS annotation_exists
+        FROM books b
+        WHERE b.id = ANY($1) AND NOT b.is_deleted AND b.lang = ANY($2)
+        "#,
+    )
+    .bind(book_ids)
+    .bind(allowed_langs)
+    .fetch_all(pool)
     .await
 }
 

@@ -46,7 +46,7 @@ use self::{
 };
 
 pub mod authors;
-pub(crate) mod book_sql;
+pub mod book_sql;
 pub mod books;
 pub mod common;
 pub mod genres;
