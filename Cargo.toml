@@ -46,7 +46,7 @@ sentry = { version = "0.42.0", features = ["debug-images"] }
 
 meilisearch-sdk = "0.29.1"
 
-rand = "0.9.3"
+rand = "0.10.3"
 
 chrono = { version = "0.4.40", features = ["serde"] }
 
