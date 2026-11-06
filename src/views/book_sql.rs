@@ -125,6 +125,53 @@ macro_rules! query_detail_book {
 
 pub(crate) use query_detail_book;
 
+/// Revalidate a Meilisearch candidate against the authoritative database.
+/// Runtime bindings keep the existing compile-time query cache unchanged.
+pub(crate) async fn random_book_candidate(
+    pool: &sqlx::PgPool,
+    id: i32,
+    allowed_langs: &[String],
+) -> Result<Option<crate::serializers::book::DetailBook>, sqlx::Error> {
+    sqlx::query_as(
+        r#"
+        SELECT b.*, available_types(b.file_type) AS available_types,
+            COALESCE((
+                SELECT ARRAY_AGG(ROW(a.id, a.first_name, a.last_name,
+                    COALESCE(a.middle_name, ''), aa.author IS NOT NULL)::author_type)
+                FROM book_authors ba JOIN authors a ON a.id = ba.author
+                LEFT JOIN author_annotations aa ON aa.author = a.id
+                WHERE ba.book = b.id
+            ), ARRAY[]::author_type[]) AS authors,
+            COALESCE((
+                SELECT ARRAY_AGG(ROW(a.id, a.first_name, a.last_name,
+                    COALESCE(a.middle_name, ''), aa.author IS NOT NULL)::author_type)
+                FROM translations t JOIN authors a ON a.id = t.author
+                LEFT JOIN author_annotations aa ON aa.author = a.id
+                WHERE t.book = b.id
+            ), ARRAY[]::author_type[]) AS translators,
+            COALESCE((
+                SELECT ARRAY_AGG(ROW(s.id, s.name)::sequence_type)
+                FROM book_sequences bs JOIN sequences s ON s.id = bs.sequence
+                WHERE bs.book = b.id
+            ), ARRAY[]::sequence_type[]) AS sequences,
+            COALESCE((
+                SELECT ARRAY_AGG(ROW(g.id, ROW(s.id, s.name)::source_type,
+                    g.remote_id, g.code, g.description, g.meta)::genre_type)
+                FROM book_genres bg JOIN genres g ON g.id = bg.genre
+                JOIN sources s ON s.id = g.source WHERE bg.book = b.id
+            ), ARRAY[]::genre_type[]) AS genres,
+            EXISTS(SELECT 1 FROM book_annotations WHERE book = b.id) AS annotation_exists,
+            (SELECT ROW(s.id, s.name)::source_type FROM sources s WHERE s.id = b.source) AS source
+        FROM books b
+        WHERE b.id = $1 AND NOT b.is_deleted AND b.lang = ANY($2)
+        "#,
+    )
+    .bind(id)
+    .bind(allowed_langs)
+    .fetch_optional(pool)
+    .await
+}
+
 /// Shared `COUNT(*)` for the `BookFilter` predicate used by both `get_books`
 /// and `get_base_books`.
 pub(crate) async fn count_books(

@@ -1,5 +1,5 @@
-//! Full-app router test: exercises the real `get_router()` (built exactly as
-//! `main.rs` does) to assert the auth policy from
+//! Full-app router test: exercises the production router with an isolated
+//! SQLx test pool to assert the auth policy from
 //! docs/specs/02-*-auth*.md / 02.1:
 //!
 //! - `/api/v1/*` requires a matching `Authorization` header (401 without it,
@@ -10,10 +10,9 @@
 //! This test needs `CONFIG` (a process-wide `Lazy`) to be initialized with a
 //! specific set of env vars *before* anything in the crate touches it, so it
 //! lives in its own test binary (every file under `tests/` compiles to a
-//! separate binary, so `CONFIG`'s `Lazy` is fresh here). It requires a real,
-//! reachable Postgres (pointed at via `POSTGRES_*` env vars, matching
-//! `src/config.rs`) since `get_router()` calls `get_postgres_pool()`, which
-//! connects and runs `sqlx::migrate!` itself. `MEILI_HOST`/`MEILI_MASTER_KEY`
+//! separate binary, so `CONFIG`'s `Lazy` is fresh here). `DATABASE_URL` must
+//! point at a Postgres server where SQLx can create isolated test databases.
+//! Migrations run only on that isolated database. `MEILI_HOST`/`MEILI_MASTER_KEY`
 //! only need to be *set* (to anything) -- the Meilisearch client is
 //! constructed lazily and isn't dialed until a search endpoint is hit, which
 //! this test doesn't do.
@@ -31,42 +30,16 @@ use tower::ServiceExt;
 
 const TEST_API_KEY: &str = "test-api-key-for-router-auth-test";
 
-const DEFAULT_DATABASE_URL: &str = "postgres://postgres:postgres@localhost:5433/routertest";
-
-/// Splits `postgres://user:password@host:port/db` into its parts.
-fn parse_database_url(url: &str) -> Option<(String, String, String, String, String)> {
-    let rest = url
-        .strip_prefix("postgres://")
-        .or_else(|| url.strip_prefix("postgresql://"))?;
-    let (creds, rest) = rest.split_once('@')?;
-    let (user, password) = creds.split_once(':').unwrap_or((creds, ""));
-    let (hostport, db) = rest.split_once('/')?;
-    let db = db.split('?').next()?;
-    let (host, port) = hostport.split_once(':').unwrap_or((hostport, "5432"));
-    Some((
-        user.to_string(),
-        password.to_string(),
-        host.to_string(),
-        port.to_string(),
-        db.to_string(),
-    ))
-}
-
 fn set_test_env() {
-    let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| DEFAULT_DATABASE_URL.to_string());
-    let (user, password, host, port, db) = parse_database_url(&url)
-        .or_else(|| parse_database_url(DEFAULT_DATABASE_URL))
-        .expect("valid database url");
-    // SAFETY: this test binary's `main` is single-threaded test harness
-    // startup; these are set once, before `CONFIG` (a `Lazy`) is first
-    // touched by any test in this binary.
+    // This binary has one test; set these before CONFIG is first touched.
+    // POSTGRES_* are required config placeholders, never used for connections.
     unsafe {
         std::env::set_var("API_KEY", TEST_API_KEY);
-        std::env::set_var("POSTGRES_USER", user);
-        std::env::set_var("POSTGRES_PASSWORD", password);
-        std::env::set_var("POSTGRES_HOST", host);
-        std::env::set_var("POSTGRES_PORT", port);
-        std::env::set_var("POSTGRES_DB", db);
+        std::env::set_var("POSTGRES_USER", "unused");
+        std::env::set_var("POSTGRES_PASSWORD", "unused");
+        std::env::set_var("POSTGRES_HOST", "unused.invalid");
+        std::env::set_var("POSTGRES_PORT", "5432");
+        std::env::set_var("POSTGRES_DB", "unused");
         std::env::set_var("MEILI_HOST", "http://localhost:7700");
         std::env::set_var("MEILI_MASTER_KEY", "test-meili-key");
     }
@@ -78,10 +51,10 @@ fn set_test_env() {
 // metrics recorder exactly once; calling `get_router()` more than once per
 // process panics with "Failed to set global recorder". `Router` is `Clone`,
 // so we build it once and clone it per `oneshot` call below.
-#[tokio::test]
-async fn router_auth_policy() {
+#[sqlx::test(migrations = "./migrations")]
+async fn router_auth_policy(pool: sqlx::PgPool) {
     set_test_env();
-    let app = book_library_server::views::get_router().await;
+    let app = book_library_server::views::get_router_with_pool(pool);
 
     // `/api/v1/*` with no `Authorization` header -> 401.
     let response = app

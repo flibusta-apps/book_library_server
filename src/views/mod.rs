@@ -100,7 +100,11 @@ async fn ready_check(Extension(pool): Extension<PgPool>) -> StatusCode {
 
 pub async fn get_router() -> Router {
     let client = get_postgres_pool().await;
+    get_router_with_pool(client)
+}
 
+/// Builds the production router with an existing pool, without running migrations.
+pub fn get_router_with_pool(client: PgPool) -> Router {
     // Touch the shared Meilisearch client once at startup so it's constructed
     // eagerly rather than lazily on first request.
     Lazy::force(&MEILI_CLIENT);

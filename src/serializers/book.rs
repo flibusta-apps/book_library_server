@@ -41,7 +41,7 @@ pub struct BaseBook {
     pub available_types: Vec<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 pub struct DetailBook {
     pub id: i32,
     pub title: String,
@@ -70,7 +70,7 @@ pub struct RandomBookFilter {
     pub genre: Option<i32>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 pub struct Book {
     pub id: i32,
     pub title: String,

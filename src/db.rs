@@ -1,18 +1,26 @@
 use crate::config::CONFIG;
 
 use sqlx::{
-    postgres::{PgConnectOptions, PgPoolOptions},
+    postgres::{PgConnectOptions, PgPoolOptions, PgSslMode},
     Executor, PgPool,
 };
 
 pub async fn get_postgres_pool() -> PgPool {
-    let options = PgConnectOptions::new()
+    let mut options = PgConnectOptions::new()
         .host(&CONFIG.postgres_host)
         .port(CONFIG.postgres_port)
         .username(&CONFIG.postgres_user)
         .password(&CONFIG.postgres_password)
         .database(&CONFIG.postgres_db)
         .application_name("book_library_server");
+
+    // Preserve SQLx's default when neither override is set.
+    if let Ok(mode) = std::env::var("DATABASE_SSLMODE").or_else(|_| std::env::var("PGSSLMODE")) {
+        options = options.ssl_mode(
+            mode.parse::<PgSslMode>()
+                .expect("Invalid PostgreSQL SSL mode"),
+        );
+    }
 
     let statement_timeout_secs = CONFIG.postgres_statement_timeout_secs;
 

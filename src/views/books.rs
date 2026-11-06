@@ -22,7 +22,7 @@ use crate::{
 };
 
 use super::{
-    book_sql::{count_books, query_detail_book},
+    book_sql::{count_books, query_detail_book, random_book_candidate},
     common::{get_random_item::get_random_item, query::normalize_query},
     Database,
 };
@@ -184,7 +184,7 @@ pub async fn get_random_book(
     db: Database,
     axum_extra::extract::Query(book_filter): axum_extra::extract::Query<RandomBookFilter>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let book_id = {
+    for _ in 0..5 {
         let client = &MEILI_CLIENT;
 
         let books_index = client.index("books");
@@ -199,15 +199,15 @@ pub async fn get_random_book(
             format!("{langs_filter}{genre_filter}")
         };
 
-        get_random_item::<BookMeili>(books_index, filter).await?
-    };
+        let book_id = get_random_item::<BookMeili>(books_index, filter).await?;
+        if let Some(book) =
+            random_book_candidate(&db.0, book_id, &book_filter.allowed_langs).await?
+        {
+            return Ok(Json::<DetailBook>(book));
+        }
+    }
 
-    let book = query_detail_book!("b.id = $1", book_id)
-        .fetch_optional(&db.0)
-        .await?
-        .ok_or(ApiError::NotFound)?;
-
-    Ok(Json::<DetailBook>(book))
+    Err(ApiError::NotFound)
 }
 
 pub async fn get_remote_book(
@@ -261,8 +261,7 @@ pub async fn search_books(
     let total = clamp_total_hits(result.estimated_total_hits);
     let book_ids: Vec<i32> = result.hits.iter().map(|a| a.result.id).collect();
 
-    let mut books = sqlx::query_as!(
-        Book,
+    let mut books = sqlx::query_as::<_, Book>(
         r#"
         SELECT
             b.id,
@@ -270,7 +269,7 @@ pub async fn search_books(
             b.lang,
             b.file_type,
             b.year,
-            available_types(b.file_type) AS "available_types!: Vec<String>",
+            available_types(b.file_type) AS available_types,
             b.uploaded,
             COALESCE(
                 (
@@ -290,7 +289,7 @@ pub async fn search_books(
                     WHERE book_authors.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS "authors!: Vec<Author>",
+            ) AS authors,
             COALESCE(
                 (
                     SELECT
@@ -309,7 +308,7 @@ pub async fn search_books(
                     WHERE translations.book = b.id
                 ),
                 ARRAY[]::author_type[]
-            ) AS "translators!: Vec<Author>",
+            ) AS translators,
             COALESCE(
                 (
                     SELECT
@@ -324,15 +323,16 @@ pub async fn search_books(
                     WHERE book_sequences.book = b.id
                 ),
                 ARRAY[]::sequence_type[]
-            ) AS "sequences!: Vec<Sequence>",
+            ) AS sequences,
             EXISTS(
                 SELECT * FROM book_annotations WHERE book = b.id
-            ) AS "annotation_exists!: bool"
+            ) AS annotation_exists
         FROM books b
-        WHERE b.id = ANY($1)
+        WHERE b.id = ANY($1) AND NOT b.is_deleted AND b.lang = ANY($2)
         "#,
-        &book_ids
     )
+    .bind(&book_ids)
+    .bind(&allowed_langs)
     .fetch_all(&db.0)
     .await?;
 
