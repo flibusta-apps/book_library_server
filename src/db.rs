@@ -2,7 +2,7 @@ use crate::config::CONFIG;
 
 use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions, PgSslMode},
-    Executor, PgPool,
+    PgPool,
 };
 
 pub async fn get_postgres_pool() -> PgPool {
@@ -31,10 +31,10 @@ pub async fn get_postgres_pool() -> PgPool {
         ))
         .after_connect(move |conn, _meta| {
             Box::pin(async move {
-                conn.execute(
-                    format!("SET statement_timeout = '{}s'", statement_timeout_secs).as_str(),
-                )
-                .await?;
+                sqlx::query("SELECT set_config('statement_timeout', $1, false)")
+                    .bind(format!("{statement_timeout_secs}s"))
+                    .execute(conn)
+                    .await?;
                 Ok(())
             })
         })

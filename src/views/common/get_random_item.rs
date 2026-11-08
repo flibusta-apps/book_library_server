@@ -1,5 +1,5 @@
 use meilisearch_sdk::indexes::Index;
-use rand::Rng;
+use rand::RngExt;
 use serde::de::DeserializeOwned;
 
 use crate::{
