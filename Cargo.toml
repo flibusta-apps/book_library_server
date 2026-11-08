@@ -44,7 +44,7 @@ serde_json = { version = "1.0.140", features = ["raw_value"] }
 
 sentry = { version = "0.42.0", features = ["debug-images"] }
 
-meilisearch-sdk = "0.29.1"
+meilisearch-sdk = "0.33.0"
 
 rand = "0.9.3"
 
